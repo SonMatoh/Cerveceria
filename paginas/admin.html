@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Taberna de Snorlax - Panel Administrador</title>
+
+    <link rel="stylesheet" href="estilos/bulma.min.css">
+    <link rel="stylesheet" href="estilos/style.css">
+</head>
+<body style="background-color: #f4f6f8;">
+
+    <header class="hero is-dark is-small">
+        <div class="hero-body py-3">
+            <div class="container is-fluid is-flex is-justify-content-space-between is-align-items-center">
+                <div>
+                    <h1 class="title is-4 mb-1">⚡ Panel Administrativo</h1>
+                    <p class="subtitle is-7">Gestión interna de inventario y usuarios</p>
+                </div>
+                <div>
+                    <a href="index.html" class="button is-danger is-small is-light has-text-weight-bold">
+                        Cerrar Sesión / Ir a Tienda
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container is-fluid my-4">
+        <div class="columns">
+            
+            <div class="column is-3-desktop is-4-tablet">
+                <div class="box p-4">
+                    <p class="has-text-weight-bold mb-3 has-text-grey-dark">PANEL DE CONTROL</p>
+                    
+                    <div class="buttons are-small">
+                        <a href="admin-home.html" class="button is-primary is-fullwidth mb-2 has-text-weight-bold">
+                            Resumen General
+                        </a>
+                        <a href="#mantenedor-productos" class="button is-light is-fullwidth mb-2">
+                            Mantenedor Productos
+                        </a>
+                        <a href="#mantenedor-usuarios" class="button is-light is-fullwidth mb-3">
+                            Mantenedor Usuarios
+                        </a>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <p class="has-text-weight-bold mb-2 has-text-grey-dark">ACCESOS RÁPIDOS</p>
+                    <div class="buttons are-small">
+                        <a href="productos.html" class="button is-text is-fullwidth is-justify-content-flex-start">
+                            Ir a Catálogo de Tienda
+                        </a>
+                        <a href="contacto.html" class="button is-text is-fullwidth is-justify-content-flex-start">
+                            Ver Formulario de Contacto
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="column is-9-desktop is-8-tablet">
+                
+                <div class="columns mb-4">
+                    <div class="column is-4">
+                        <div class="box has-background-primary-light has-text-centered py-4">
+                            <p class="heading has-text-primary-dark">Total Cervezas</p>
+                            <p class="title is-3 has-text-primary-dark" id="kpi-productos">12</p>
+                        </div>
+                    </div>
+                    <div class="column is-4">
+                        <div class="box has-background-info-light has-text-centered py-4">
+                            <p class="heading has-text-info-dark">Usuarios Registrados</p>
+                            <p class="title is-3 has-text-info-dark">3</p>
+                        </div>
+                    </div>
+                    <div class="column is-4">
+                        <div class="box has-background-warning-light has-text-centered py-4">
+                            <p class="heading has-text-warning-dark">Pedidos Pendientes</p>
+                            <p class="title is-3 has-text-warning-dark">5</p>
+                        </div>
+                    </div>
+                </div>
+
+                <section id="mantenedor-productos" class="box mb-5">
+                    <h2 class="title is-4 mb-1">Catálogo de Productos Activos</h2>
+                    <p class="subtitle is-6 has-text-grey mb-4">Listado de inventario de la taberna.</p>
+
+                    <div id="lista-admin-productos">
+                    </div>
+                </section>
+
+                <section id="mantenedor-usuarios" class="box">
+                    <h2 class="title is-4 mb-1">Usuarios del Sistema</h2>
+                    <p class="subtitle is-6 has-text-grey mb-4">Cuentas con acceso a la plataforma.</p>
+
+                    <div class="box p-3 mb-2 has-background-white-ter">
+                        <div class="columns is-vcentered is-mobile">
+                            <div class="column is-5">
+                                <p class="has-text-weight-bold">Profesor Evaluador</p>
+                                <p class="is-size-7 has-text-grey">profesor@duoc.cl</p>
+                            </div>
+                            <div class="column is-4">
+                                <span class="tag is-primary">Administrador</span>
+                            </div>
+                            <div class="column is-3 has-text-right">
+                                <span class="tag is-success is-light">Activo</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="box p-3 mb-2 has-background-white-ter">
+                        <div class="columns is-vcentered is-mobile">
+                            <div class="column is-5">
+                                <p class="has-text-weight-bold">Ash Ketchum</p>
+                                <p class="is-size-7 has-text-grey">ash@gmail.com</p>
+                            </div>
+                            <div class="column is-4">
+                                <span class="tag is-info is-light">Cliente</span>
+                            </div>
+                            <div class="column is-3 has-text-right">
+                                <span class="tag is-success is-light">Activo</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="box p-3 mb-2 has-background-white-ter">
+                        <div class="columns is-vcentered is-mobile">
+                            <div class="column is-5">
+                                <p class="has-text-weight-bold">Red Paleta</p>
+                                <p class="is-size-7 has-text-grey">red@duoc.cl</p>
+                            </div>
+                            <div class="column is-4">
+                                <span class="tag is-info is-light">Cliente</span>
+                            </div>
+                            <div class="column is-3 has-text-right">
+                                <span class="tag is-success is-light">Activo</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+
+        </div>
+    </main>
+
+    <script src="scripts/admin.js"></script>
+</body>
+</html>
