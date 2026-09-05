@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Taberna de Snorlax - Catálogo Completo</title>
+
+    <link rel="stylesheet" href="estilos/bulma.min.css">
+    <link rel="stylesheet" href="estilos/style.css">
+</head>
+<body>
+
+    <header class="hero is-primary is-small">
+        <div class="hero-body py-3">
+            <div class="container">
+                <h1 class="title main-title">La Taberna de Snorlax</h1>
+                <p class="subtitle">Cervezas artesanales inspiradas en el mundo Pokémon</p>
+            </div>
+        </div>
+    </header>
+
+    <nav class="box py-2 mb-4">
+        <div class="container">
+            <div class="columns is-vcentered is-mobile is-multiline">
+                <div class="column is-8-desktop is-12-mobile has-text-centered-mobile">
+                    <a href="index.html" class="mr-3 has-text-dark">Home</a>
+                    <a href="productos.html" class="mr-3 has-text-dark has-text-weight-bold">Productos</a>
+                    <a href="contacto.html" class="mr-3 has-text-dark">Contacto</a>
+                </div>
+
+                <div class="column is-4-desktop is-12-mobile has-text-right-desktop has-text-centered-mobile">
+                    <a href="login.html" class="is-size-7 mr-2">Iniciar sesión</a> | 
+                    <a href="registro.html" class="is-size-7 ml-2 mr-3">Registrar usuario</a>
+                    <a href="carrito.html" class="button is-small is-primary btn-cart">🛒 Cart (0)</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-5 px-3">
+        <div class="has-text-centered mb-5">
+            <h2 class="title is-3 has-text-dark"> CARTA COMPLETA DE CERVEZAS</h2>
+            <p class="subtitle is-6 has-text-grey-dark">
+                Explora nuestras 12 recetas de autor preparadas con bayas y maltas seleccionadas.
+            </p>
+        </div>
+
+        <section class="mb-5">
+            <div class="field">
+                <div class="control">
+                    <input class="input is-medium" type="text" id="search-input" placeholder="🔍 Filtrar por nombre de cerveza o estilo (ej: IPA, Stout, Sour)...">
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div id="character-grid" class="columns is-multiline">
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer py-5 mt-6">
+        <div class="content has-text-centered">
+            <p><strong>La Taberna De Snorlax</strong> &copy; 2026 — Desarrollo de Orgias de Enanos Albinos con Sida II</p>
+            <p class="is-size-7 has-text-grey">Venta solo para mayores de 18 años. Bebe con moderación.</p>
+        </div>
+    </footer>
+
+    <script src="scripts/tienda.js"></script>
+</body>
+</html>

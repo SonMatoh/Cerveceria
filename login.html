@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Taberna de Snorlax - Iniciar Sesion</title>
+
+    <link rel="stylesheet" href="estilos/bulma.min.css">
+    <link rel="stylesheet" href="estilos/style.css">
+</head>
+<body>
+
+    <header class="hero is-primary is-small">
+        <div class="hero-body py-3">
+            <div class="container">
+                <h1 class="title main-title">La Taberna de Snorlax</h1>
+                <p class="subtitle">Cervezas artesanales inspiradas en el mundo PokeMon</p>
+            </div>
+        </div>
+    </header>
+
+    <nav class="box py-2 mb-4">
+        <div class="container">
+            <div class="columns is-vcentered is-mobile is-multiline">
+                <div class="column is-8-desktop is-12-mobile has-text-centered-mobile">
+                    <a href="index.html" class="mr-3 has-text-dark">Home</a>
+                    <a href="productos.html" class="mr-3 has-text-dark">Productos</a>
+                    <a href="contacto.html" class="mr-3 has-text-dark">Contacto</a>
+                </div>
+
+                <div class="column is-4-desktop is-12-mobile has-text-right-desktop has-text-centered-mobile">
+                    <a href="login.html" class="is-size-7 mr-2 has-text-weight-bold">Iniciar sesion</a> | 
+                    <a href="registro.html" class="is-size-7 ml-2 mr-3">Registrar usuario</a>
+                    <a href="carrito.html" class="button is-small is-primary btn-cart">🛒 Cart (0)</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-5 px-3">
+        <div class="columns is-centered">
+            <div class="column is-5-desktop is-8-tablet">
+                
+                <section class="box p-5">
+                    <h2 class="title is-3 has-text-dark mb-2">Iniciar Sesion</h2>
+                    <p class="subtitle is-6 has-text-grey-dark mb-4">
+                        Ingresa tus credenciales para acceder a tus compras y pedidos.
+                    </p>
+
+                    <div id="login-exito" class="notification is-success is-light is-hidden mb-4">
+                        ¡Bienvenido de vuelta! Redirigiendo...
+                    </div>
+
+                    <form id="form-login" novalidate>
+
+                        <div class="field mb-4">
+                            <label class="label" for="login-email">Correo electronico</label>
+                            <div class="control">
+                                <input class="input" type="email" id="login-email" placeholder="ejemplo@duoc.cl o ejemplo@gmail.com">
+                            </div>
+                            <p id="error-login-email" class="help is-danger is-hidden">Ingresa un correo institucional o Gmail valido.</p>
+                        </div>
+
+                        <div class="field mb-5">
+                            <label class="label" for="login-pass">Contraseña</label>
+                            <div class="control">
+                                <input class="input" type="password" id="login-pass" placeholder="Entre 4 y 10 caracteres">
+                            </div>
+                            <p id="error-login-pass" class="help is-danger is-hidden">La contraseña debe tener entre 4 y 10 caracteres.</p>
+                        </div>
+
+                        <div class="field mb-4">
+                            <button type="submit" class="button is-primary is-fullwidth is-medium has-text-weight-bold">
+                                Entrar a la Taberna
+                            </button>
+                        </div>
+
+                        <div class="has-text-centered is-size-7 mt-3">
+                            ¿Aún no tienes cuenta? <a href="registro.html" class="has-text-primary has-text-weight-semibold">Registrate aqui</a>
+                        </div>
+
+                    </form>
+                </section>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer py-5 mt-6">
+        <div class="content has-text-centered">
+            <p><strong>La Taberna De Snorlax</strong> &copy; 2026 — Desarrollo de Orgias de Enanos Albinos con Sida II</p>
+            <p class="is-size-7 has-text-grey">Venta solo para mayores de 18 años. Bebe con moderación.</p>
+        </div>
+    </footer>
+
+    <script src="scripts/validaciones.js"></script>
+</body>
+</html>

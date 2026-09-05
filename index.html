@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Taberna de Snorlax</title>
+
+    <link rel="stylesheet" href="estilos/bulma.min.css">
+    <link rel="stylesheet" href="estilos/style.css">
+
+</head>
+<body>
+    <header class="hero is-primary is-small">
+        <div class="hero-body py-3">
+            <div class="container">
+                <h1 class="title main-title">La Taberna de Snorlax</h1>
+                <p class="subtitle">Cervezas artesanales inspiradas en el mundo PokeMon</p>
+            </div>
+        </div>
+    </header>
+
+    <nav class="box py-2 mb-4">
+        <div class="container">
+            <div class="columns is-vcentred is-mobile is-multiline">
+                <div class="column is-8-desktop is-12-mobile has-text-centered-mobile">
+                    <a href="index.html" class="mr-3 has-text-dark has-text-weight-bold">Home</a>
+                    <a href="productos.html" class="mr-3 has-text-dark">Productos</a>
+                    <a href="contacto.html" class="mr-3 has-text-dark">Contacto</a>
+                </div>
+
+                <div class="column is-4-desktop is-12-mobile has-text-right-desktop has-text-centered-mobile">
+                    <a href="login.html" class="is-size-7 mr-2">Iniciar sesión</a> | 
+                    <a href="registro.html" class="is-size-7 ml-2 mr-3">Registrar usuario</a>
+                    <a href="carrito.html" class="button is-small is-primary btn-cart"> Cart (0)</a>
+                </div>
+
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-5 px-3">
+        <section class="box mb-5">
+            <div class="columns is-vcentered">
+                <div class="column is-7">
+                    <h2 class="title is-3">TIENDA ONLINE</h2>
+                    <p class="subtitle is-6 mb-4">
+                        Bienvenido a la mejor cerveceria del mejor pais de Chile.
+                        Disfruta de nuestras recetas artesanales preparadas con ingredientes
+                        de alta calidad y el descanso digno de un Snorlax.
+                    </p>
+                    <a href="productos.html" class="button is-primary is-medium">Ver productos</a>
+                </div>
+
+                <div class="column is-5 has-text-centered">
+                    <img src="imagenes/char.png" alt="Snorlax en la Taberna" style="max-height: 240px; border-radius: 12px;" onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/143.png'">
+                </div>
+
+            </div>
+        </section>
+
+        <section class="mb-5">
+            <h3 class="title is-4 mb-4">Cervezas Destacadas</h3>
+            <div id="character-grid" class="columns is-multiline">
+            </div>
+        </section>
+
+        <section class="box mb-5">
+            <h3 class="title is-4">Elaboración en La Taberna</h3>
+            <p class="subtitle is-6 has-text-grey-dark mb-3">Conoce el proceso de la elaboración de nuestras Cervezas</p>
+            <div class="video-container">
+                <iframe
+                    width="100%"
+                    height="350"
+                    src="https://www.youtube.com/embed/6W_fMxFMF5c"
+                    title="Proceso cervecero artesanal"
+                    frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen>
+                </iframe>
+            </div>
+        </section>
+
+
+    </main>
+
+    <footer class="footer py-5 mt-6">
+        <div class="content has-text-centered">
+            <p><strong>La Taberna De Snorlax</strong> &copy; 2026 - Desarrollo de Orgias de Enanos Albinos con Sida II</p>
+            <p class="is-size-7 has-text-gret">Venta solo para Mayores de 18 Años</p>
+
+        </div>
+    </footer>
+    <script src="scripts/tiuenda.js"></script>
+
+
+    
+</body>
+</html>
