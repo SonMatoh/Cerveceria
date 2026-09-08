@@ -1,2 +1,2 @@
 # Cerveceria
-Cervezas Con Pokemones como Ingredientes
+Cervezas Con Pokemones de inpiracion
