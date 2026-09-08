@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>La Taberna de Snorlax - Panel Administrador</title>
 
-    <link rel="stylesheet" href="estilos/bulma.min.css">
-    <link rel="stylesheet" href="estilos/style.css">
+    <link rel="stylesheet" href="../estilos/bulma.min.css">
+    <link rel="stylesheet" href="../estilos/style.css">
 </head>
 <body style="background-color: #f4f6f8;">
 
@@ -18,7 +18,7 @@
                     <p class="subtitle is-7">Gestión interna de inventario y usuarios</p>
                 </div>
                 <div>
-                    <a href="index.html" class="button is-danger is-small is-light has-text-weight-bold">
+                    <a href="../index.html" class="button is-danger is-small is-light has-text-weight-bold">
                         Cerrar Sesión / Ir a Tienda
                     </a>
                 </div>
@@ -28,11 +28,11 @@
 
     <main class="container is-fluid my-4">
         <div class="columns">
-            
+
             <div class="column is-3-desktop is-4-tablet">
                 <div class="box p-4">
                     <p class="has-text-weight-bold mb-3 has-text-grey-dark">PANEL DE CONTROL</p>
-                    
+
                     <div class="buttons are-small">
                         <a href="admin-home.html" class="button is-primary is-fullwidth mb-2 has-text-weight-bold">
                             Resumen General
@@ -60,7 +60,7 @@
             </div>
 
             <div class="column is-9-desktop is-8-tablet">
-                
+
                 <div class="columns mb-4">
                     <div class="column is-4">
                         <div class="box has-background-primary-light has-text-centered py-4">
@@ -81,6 +81,41 @@
                         </div>
                     </div>
                 </div>
+
+                <section class="box mb-5">
+                    <h2 class="title is-4 mb-3" id="titulo-formulario">Añadir Nuevo Producto</h2>
+                    <form id="form-admin-producto">
+                        <input type="hidden" id="admin-index">
+
+                        <div class="columns is-multiline">
+                            <div class="column is-6">
+                                <label class="label is-small">Nombre de la Cerveza</label>
+                                <input class="input" type="text" id="admin-nombre" placeholder="Ej: Pikachu Triple IPA" required>
+                            </div>
+                            <div class="column is-6">
+                                <label class="label is-small">Estilo y ABV</label>
+                                <input class="input" type="text" id="admin-estilo" placeholder="Ej: Triple IPA (9.5° ABV)" required>
+                            </div>
+                            <div class="column is-6">
+                                <label class="label is-small">Precio ($)</label>
+                                <input class="input" type="number" id="admin-precio" placeholder="Ej: 4500" required>
+                            </div>
+                            <div class="column is-6">
+                                <label class="label is-small">Ruta de la Imagen</label>
+                                <input class="input" type="text" id="admin-imagen" placeholder="Ej: imagenes/pika.png" required>
+                            </div>
+                            <div class="column is-12">
+                                <label class="label is-small">Descripción</label>
+                                <textarea class="textarea" id="admin-desc" rows="2" placeholder="Describe el sabor y efecto..." required></textarea>
+                            </div>
+                        </div>
+
+                        <div class="buttons mt-3">
+                            <button type="submit" class="button is-primary" id="btn-guardar">Guardar Producto</button>
+                            <button type="button" class="button is-light is-hidden" id="btn-cancelar">Cancelar Edición</button>
+                        </div>
+                    </form>
+                </section>
 
                 <section id="mantenedor-productos" class="box mb-5">
                     <h2 class="title is-4 mb-1">Catálogo de Productos Activos</h2>
@@ -145,6 +180,6 @@
         </div>
     </main>
 
-    <script src="scripts/admin.js"></script>
+    <script src="../scripts/admin.js"></script>
 </body>
 </html>
