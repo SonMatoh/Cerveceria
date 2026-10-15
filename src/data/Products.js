@@ -297,12 +297,23 @@ export function cerrarSesion() {
 }
 
 export function obtenerUsuarios() {
-  const guardado = localStorage.getItem('usuariosTaberna');
-  if (guardado) {
-    return JSON.parse(guardado);
+  let guardados = [];
+  try {
+    const dato = JSON.parse(localStorage.getItem('usuariosTaberna'));
+    if (Array.isArray(dato)) {
+      guardados = dato;
+    }
+  } catch {
+    guardados = [];
   }
-  localStorage.setItem('usuariosTaberna', JSON.stringify(usuariosIniciales));
-  return usuariosIniciales;
+  const correosGuardados = guardados.map((u) => String(u.email || '').toLowerCase());
+  const faltantes = usuariosIniciales.filter(
+    (u) => !correosGuardados.includes(u.email.toLowerCase())
+  );
+
+  const listaCompleta = [...faltantes, ...guardados];
+  localStorage.setItem('usuariosTaberna', JSON.stringify(listaCompleta));
+  return listaCompleta;
 }
 
 export function restaurarUsuarios() {
