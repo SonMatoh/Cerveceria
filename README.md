@@ -8,17 +8,6 @@ Tienda online de cervezas inspiradas en el Mundo Pokémon.
 - Mateo Hormaeche
 - Matias Contreras
 
-## Stack
-
-| Tecnología | Versión |
-|---|---|
-| React | 18.3.1 |
-| Vite | 6.3.5 |
-| React Router | 6.30.0 |
-| React Bootstrap | 2.10.10 |
-| Bootstrap | 5.3.3 |
-| React Hook Form | 7.54.2 |
-
 ## Estructura
 
 ```
