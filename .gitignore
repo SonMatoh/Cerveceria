@@ -1,6 +1,10 @@
-HELP.md
+# =============================================================================
+# La Taberna de Snorlax — Monorepo (backend + frontend)
+# =============================================================================
+
+# --- Java / Maven (backend/) ---
 target/
-.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
 
@@ -24,10 +28,34 @@ target/
 /nbbuild/
 /dist/
 /nbdist/
-/.nb-gradle/
+.nb-gradle/
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
 ### VS Code ###
 .vscode/
+
+# --- Node / React (frontend/) ---
+node_modules/
+dist/
+build/
+*.env
+.env
+.env.local
+.env.*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- OS ---.
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+
+# --- IDE ---
+*.swp
+*.swo
+*~
