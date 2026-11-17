@@ -11,12 +11,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,7 +35,7 @@ class ProductoControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Mock
+    @MockitoBean
     private ProductoRepository productoRepository;
 
     @Test
@@ -54,7 +55,7 @@ class ProductoControllerTest {
     @Test
     void obtenerProductoPorIdDebeRetornarProducto() throws Exception {
         Producto producto = new Producto(1L, "Pika", "Estilo", "Desc", 4600, "/img/pika.png", "Cervezas", 0);
-        when(productoRepository.findById(1L)).thenReturn(java.util.Optional.of(producto));
+        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
 
         mockMvc.perform(get("/api/productos/1"))
                 .andExpect(status().isOk())

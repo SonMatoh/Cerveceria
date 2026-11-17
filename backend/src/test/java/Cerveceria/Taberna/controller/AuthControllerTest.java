@@ -6,12 +6,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.LocalDate;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,7 +24,7 @@ import Cerveceria.Taberna.dto.RegistroRequest;
 import Cerveceria.Taberna.model.Usuario;
 import Cerveceria.Taberna.repository.UsuarioRepository;
 
-@org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest(AuthController.class)
+@WebMvcTest(AuthController.class)
 class AuthControllerTest {
 
     @Autowired
@@ -30,16 +33,15 @@ class AuthControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Mock
+    @MockitoBean
     private UsuarioRepository usuarioRepository;
 
-    private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @BeforeEach
     void setUp() {
-        // Resetear sesión estática antes de cada prueba
-        // No hay forma directa de acceder al campo estático privado,
-        // así que las pruebas asumen que empiezan sin sesión
+        // Si tienes un endpoint /api/auth/logout, podrías llamarlo aquí
+        // en caso de que algún test deje la sesión estática activa.
     }
 
     @Test
@@ -110,7 +112,7 @@ class AuthControllerTest {
         usuario.setEmail("juan@email.com");
         usuario.setPassword(passwordHasheada);
         usuario.setRol("cliente");
-        usuario.setFechaNacimiento(java.time.LocalDate.of(2000, 1, 1));
+        usuario.setFechaNacimiento(LocalDate.of(2000, 1, 1));
 
         when(usuarioRepository.findByEmail("juan@email.com")).thenReturn(usuario);
 

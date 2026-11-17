@@ -12,13 +12,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.tags.Tag;
-
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -27,7 +20,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "*")
-@Tag(name = "Autenticación", description = "Endpoints de inicio de sesión, registro y gestión de sesión")
 @Validated
 public class AuthController {
 
@@ -39,15 +31,6 @@ public class AuthController {
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    @Operation(
-        summary = "Iniciar sesión",
-        description = "Autentica un usuario con email y contraseña",
-        responses = {
-            @ApiResponse(responseCode = "200", description = "Autenticación exitosa"),
-            @ApiResponse(responseCode = "400", description = "Email inválido"),
-            @ApiResponse(responseCode = "401", description = "Credenciales inválidas")
-        }
-    )
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest credenciales) {
         String email = credenciales.getEmail().trim().toLowerCase();
@@ -78,14 +61,6 @@ public class AuthController {
         return ResponseEntity.ok(respuesta);
     }
 
-    @Operation(
-        summary = "Registrar usuario",
-        description = "Crea una nueva cuenta de usuario (verifica edad 18-120 años)",
-        responses = {
-            @ApiResponse(responseCode = "201", description = "Usuario registrado exitosamente"),
-            @ApiResponse(responseCode = "400", description = "Datos inválidos o email duplicado")
-        }
-    )
     @PostMapping("/registro")
     public ResponseEntity<?> registro(@Valid @RequestBody RegistroRequest datos) {
         String nombre = datos.getNombre().trim();
@@ -133,14 +108,6 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
     }
 
-    @Operation(
-        summary = "Obtener sesión activa",
-        description = "Devuelve el usuario actualmente autenticado",
-        responses = {
-            @ApiResponse(responseCode = "200", description = "Sesión activa"),
-            @ApiResponse(responseCode = "401", description = "No hay sesión activa")
-        }
-    )
     @GetMapping("/sesion")
     public ResponseEntity<?> sesion() {
         if (sesionEmail == null) {
@@ -157,27 +124,12 @@ public class AuthController {
         return ResponseEntity.ok(usuario);
     }
 
-    @Operation(
-        summary = "Cerrar sesión",
-        description = "Elimina la sesión activa del usuario",
-        responses = {
-            @ApiResponse(responseCode = "200", description = "Sesión cerrada exitosamente")
-        }
-    )
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
         sesionEmail = null;
         return ResponseEntity.ok(Map.of("mensaje", "Sesión cerrada"));
     }
 
-    @Operation(
-        summary = "Verificar rol de administrador",
-        description = "Indica si el usuario autenticado tiene rol de administrador",
-        responses = {
-            @ApiResponse(responseCode = "200", description = "Estado del rol administrador"),
-            @ApiResponse(responseCode = "401", description = "No hay sesión activa")
-        }
-    )
     @GetMapping("/es-admin")
     public ResponseEntity<?> esAdmin() {
         if (sesionEmail == null) {
@@ -202,7 +154,7 @@ public class AuthController {
     public ResponseEntity<?> manejarErroresValidacion(MethodArgumentNotValidException ex) {
         Map<String, String> errores = new HashMap<>();
         ex.getBindingResult().getFieldErrors().forEach(error ->
-                errores.put(error.getField(), error.getDefaultMessage())
+            errores.put(error.getField(), error.getDefaultMessage())
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("error", "Datos inválidos", "campos", errores));

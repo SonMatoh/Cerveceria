@@ -10,15 +10,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import Cerveceria.Taberna.model.Orden;
+import Cerveceria.Taberna.model.Usuario;
 import Cerveceria.Taberna.repository.OrdenRepository;
 import Cerveceria.Taberna.repository.UsuarioRepository;
 
@@ -28,10 +30,10 @@ class OrdenControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Mock
+    @MockitoBean
     private OrdenRepository ordenRepository;
 
-    @Mock
+    @MockitoBean
     private UsuarioRepository usuarioRepository;
 
     @Test
@@ -50,12 +52,11 @@ class OrdenControllerTest {
 
     @Test
     void crearOrdenDebeRetornar201() throws Exception {
-        // Crear un usuario mockeado para que exista
-        Cerveceria.Taberna.model.Usuario usuario = new Cerveceria.Taberna.model.Usuario();
+        Usuario usuario = new Usuario();
         usuario.setId(1L);
         usuario.setNombre("Juan");
         usuario.setEmail("juan@email.com");
-        when(usuarioRepository.findById(1L)).thenReturn(java.util.Optional.of(usuario));
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
 
         when(ordenRepository.save(any(Orden.class))).thenAnswer(invocation -> {
             Orden o = invocation.getArgument(0);
@@ -75,7 +76,7 @@ class OrdenControllerTest {
 
     @Test
     void crearOrdenConUsuarioInexistenteDebeRetornar404() throws Exception {
-        when(usuarioRepository.findById(999L)).thenReturn(java.util.Optional.empty());
+        when(usuarioRepository.findById(999L)).thenReturn(Optional.empty());
 
         String json = "{ \"usuarioId\": 999, \"total\": 5000 }";
 
