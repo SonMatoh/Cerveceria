@@ -1,13 +1,11 @@
 package Cerveceria.Taberna.controller;
 
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
-
 import Cerveceria.Taberna.model.Blog;
 import Cerveceria.Taberna.repository.BlogRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -44,7 +42,7 @@ public class BlogController {
                 .collect(Collectors.toList());
 
         return CollectionModel.of(blogModels,
-                linkTo(methodOn(BlogController.class).listarBlog()).withSelfRel());
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BlogController.class).listarBlog()).withSelfRel());
     }
 
     @Operation(
@@ -64,8 +62,8 @@ public class BlogController {
 
     private EntityModel<Blog> toModel(Blog blog) {
         EntityModel<Blog> model = EntityModel.of(blog);
-        model.add(linkTo(methodOn(BlogController.class).obtenerBlog(blog.getId())).withSelfRel());
-        model.add(linkTo(methodOn(BlogController.class).listarBlog()).withRel("blog"));
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BlogController.class).obtenerBlog(blog.getId())).withSelfRel());
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BlogController.class).listarBlog()).withRel("blog"));
         return model;
     }
 }

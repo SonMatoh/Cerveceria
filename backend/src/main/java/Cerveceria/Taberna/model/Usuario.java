@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -31,6 +32,7 @@ public class Usuario {
     private String email;
 
     @NotBlank(message = "La contraseña es obligatoria")
+    @JsonIgnore
     @Column(nullable = false)
     private String password;
 

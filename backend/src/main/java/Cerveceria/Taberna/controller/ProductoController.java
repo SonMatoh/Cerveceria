@@ -4,6 +4,9 @@ import Cerveceria.Taberna.dto.ProductoRequest;
 import Cerveceria.Taberna.model.Producto;
 import Cerveceria.Taberna.repository.ProductoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -16,6 +19,7 @@ import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/productos")
@@ -27,27 +31,36 @@ public class ProductoController {
     private ProductoRepository productoRepository;
 
     @GetMapping
-    public List<Producto> listarProductos(
+    public CollectionModel<EntityModel<Producto>> listarProductos(
             @RequestParam(required = false) String categoria,
             @RequestParam(required = false) String nombre) {
+        List<Producto> productos;
         if (categoria != null && !categoria.isEmpty()) {
-            return productoRepository.findByCategoria(categoria);
+            productos = productoRepository.findByCategoria(categoria);
+        } else if (nombre != null && !nombre.isEmpty()) {
+            productos = productoRepository.findByNombreContainingIgnoreCase(nombre);
+        } else {
+            productos = productoRepository.findAll();
         }
-        if (nombre != null && !nombre.isEmpty()) {
-            return productoRepository.findByNombreContainingIgnoreCase(nombre);
-        }
-        return productoRepository.findAll();
+
+        List<EntityModel<Producto>> productoModels = productos.stream()
+                .map(this::toModel)
+                .collect(Collectors.toList());
+
+        return CollectionModel.of(productoModels,
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(ProductoController.class).listarProductos(null, null)).withSelfRel());
     }
 
     @GetMapping("/{id}")
-    public Producto obtenerProducto(@PathVariable Long id) {
-        return productoRepository.findById(id)
+    public EntityModel<Producto> obtenerProducto(@PathVariable Long id) {
+        Producto producto = productoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto " + id + " no existe"));
+        return toModel(producto);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Producto crearProducto(@Valid @RequestBody ProductoRequest datos) {
+    public EntityModel<Producto> crearProducto(@Valid @RequestBody ProductoRequest datos) {
         Producto producto = new Producto();
         producto.setNombre(datos.getNombre());
         producto.setEstilo(datos.getEstilo());
@@ -56,11 +69,12 @@ public class ProductoController {
         producto.setImagenUrl(datos.getImagenUrl());
         producto.setCategoria(datos.getCategoria());
         producto.setDescuento(datos.getDescuento());
-        return productoRepository.save(producto);
+        Producto saved = productoRepository.save(producto);
+        return toModel(saved);
     }
 
     @PutMapping("/{id}")
-    public Producto actualizarProducto(@PathVariable Long id, @Valid @RequestBody ProductoRequest datos) {
+    public EntityModel<Producto> actualizarProducto(@PathVariable Long id, @Valid @RequestBody ProductoRequest datos) {
         Producto producto = productoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto " + id + " no existe"));
         producto.setNombre(datos.getNombre());
@@ -70,7 +84,8 @@ public class ProductoController {
         producto.setImagenUrl(datos.getImagenUrl());
         producto.setCategoria(datos.getCategoria());
         producto.setDescuento(datos.getDescuento());
-        return productoRepository.save(producto);
+        Producto saved = productoRepository.save(producto);
+        return toModel(saved);
     }
 
     @DeleteMapping("/{id}")
@@ -90,5 +105,12 @@ public class ProductoController {
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("error", "Datos inválidos", "campos", errores));
+    }
+
+    private EntityModel<Producto> toModel(Producto producto) {
+        EntityModel<Producto> model = EntityModel.of(producto);
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(ProductoController.class).obtenerProducto(producto.getId())).withSelfRel());
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(ProductoController.class).listarProductos(null, null)).withRel("productos"));
+        return model;
     }
 }

@@ -21,7 +21,7 @@ class SaludControllerTest {
     void healthDebeRetornarEstadoOk() throws Exception {
         mockMvc.perform(get("/api/health"))
                 .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.valueOf("application/hal+json")))
                 .andExpect(jsonPath("$.estado").value("ok"));
     }
 }
