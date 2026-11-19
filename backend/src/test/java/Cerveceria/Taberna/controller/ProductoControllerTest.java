@@ -40,10 +40,27 @@ class ProductoControllerTest {
 
     @Test
     void listarProductosDebeRetornarLista() throws Exception {
-        List<Producto> productos = Arrays.asList(
-                new Producto(1L, "Pika", "Estilo", "Desc", 4600, "/img/pika.png", "Cervezas", 0),
-                new Producto(2L, "Bulba", "Estilo", "Desc", 3800, "/img/bulb.png", "Cervezas", 15)
-        );
+        Producto p1 = new Producto();
+        p1.setId(1L);
+        p1.setNombre("Pika");
+        p1.setEstilo("Estilo");
+        p1.setDescripcion("Desc");
+        p1.setPrecio(4600);
+        p1.setImagenUrl("/img/pika.png");
+        p1.setCategoria("Cervezas");
+        p1.setDescuento(0);
+
+        Producto p2 = new Producto();
+        p2.setId(2L);
+        p2.setNombre("Bulba");
+        p2.setEstilo("Estilo");
+        p2.setDescripcion("Desc");
+        p2.setPrecio(3800);
+        p2.setImagenUrl("/img/bulb.png");
+        p2.setCategoria("Cervezas");
+        p2.setDescuento(15);
+
+        List<Producto> productos = Arrays.asList(p1, p2);
         when(productoRepository.findAll()).thenReturn(productos);
 
         mockMvc.perform(get("/api/productos"))
@@ -54,7 +71,16 @@ class ProductoControllerTest {
 
     @Test
     void obtenerProductoPorIdDebeRetornarProducto() throws Exception {
-        Producto producto = new Producto(1L, "Pika", "Estilo", "Desc", 4600, "/img/pika.png", "Cervezas", 0);
+        Producto producto = new Producto();
+        producto.setId(1L);
+        producto.setNombre("Pika");
+        producto.setEstilo("Estilo");
+        producto.setDescripcion("Desc");
+        producto.setPrecio(4600);
+        producto.setImagenUrl("/img/pika.png");
+        producto.setCategoria("Cervezas");
+        producto.setDescuento(0);
+
         when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
 
         mockMvc.perform(get("/api/productos/1"))
@@ -71,7 +97,13 @@ class ProductoControllerTest {
         request.setCategoria("Cervezas");
         request.setDescuento(0);
 
-        Producto productoGuardado = new Producto(1L, "Nuevo Producto", null, null, 5000, null, "Cervezas", 0);
+        Producto productoGuardado = new Producto();
+        productoGuardado.setId(1L);
+        productoGuardado.setNombre("Nuevo Producto");
+        productoGuardado.setPrecio(5000);
+        productoGuardado.setCategoria("Cervezas");
+        productoGuardado.setDescuento(0);
+
         when(productoRepository.save(any(Producto.class))).thenReturn(productoGuardado);
 
         mockMvc.perform(post("/api/productos")
