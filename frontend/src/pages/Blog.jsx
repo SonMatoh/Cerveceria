@@ -1,13 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card } from 'react-bootstrap';
 import Image from '../components/atoms/Image.jsx';
 import Text from '../components/atoms/Text.jsx';
 import Button from '../components/atoms/Button.jsx';
-import { blogsIniciales } from '../data/Products.js';
+import BlogService from '../services/BlogService.js';
 
 export function Blog() {
   const navigate = useNavigate();
+  const [blogs, setBlogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchBlogs = async () => {
+      try {
+        const data = await BlogService.listarBlog();
+        setBlogs(data);
+        setLoading(false);
+      } catch (error) {
+        console.log('Error al obtener blog del backend:', error);
+        setLoading(false);
+      }
+    };
+    fetchBlogs();
+  }, []);
+
+  if (loading) {
+    return (
+      <Container className="py-5 text-center">
+        <h2>Cargando artículos...</h2>
+      </Container>
+    );
+  }
 
   return (
     <Container className="py-5">
@@ -19,11 +43,11 @@ export function Blog() {
       </Text>
 
       <Row className="g-4">
-        {blogsIniciales.map((post) => (
+        {blogs.map((post) => (
           <Col md={6} key={post.id}>
             <Card className="card-producto border-0 shadow-sm h-100">
               <div className="img-wrap text-center">
-                <Image src={post.imagen} alt={post.titulo} />
+                <Image src={post.imagenUrl || post.imagen} alt={post.titulo} />
               </div>
               <Card.Body>
                 <small className="text-secondary d-block mb-1">

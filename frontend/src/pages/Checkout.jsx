@@ -8,8 +8,8 @@ import {
   precioSocio,
   formatoClp,
   esMayorDeEdad,
-  registrarOrden,
 } from '../data/Products.js';
+import OrdenService from '../services/OrdenService.js';
 
 const CLAVE_RESUMEN = 'resumenCompra';
 const PATRON_CORREO = /^[a-zA-Z0-9._%+-]+@(duoc\.cl|profesor\.duoc\.cl|gmail\.com)$/i;
@@ -122,7 +122,7 @@ export function Checkout() {
     );
   }
 
-  const enviar = (evento) => {
+  const enviar = async (evento) => {
     evento.preventDefault();
     const nuevosErrores = {};
 
@@ -174,7 +174,17 @@ export function Checkout() {
     };
 
     localStorage.setItem(CLAVE_RESUMEN, JSON.stringify(resumen));
-    registrarOrden(resumen);
+
+    try {
+      const datosOrden = {
+        usuarioId: sesion?.id ?? null,
+        total: total,
+        estado: resumen.estado,
+      };
+      await OrdenService.crearOrden(datosOrden);
+    } catch (error) {
+      console.log('Error al registrar orden:', error);
+    }
 
     if (rechazarPago) {
       navigate('/compra-fallida');

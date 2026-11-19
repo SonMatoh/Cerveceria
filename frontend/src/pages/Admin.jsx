@@ -8,10 +8,11 @@ import {
   obtenerUsuarios,
 } from '../data/Products.js';
 import ProductoService from '../services/ProductoService.js';
+import OrdenService from '../services/OrdenService.js';
 
 export function Admin() {
-  const [productos, setProductos] = useState(obtenerProductos());
-  const ordenes = obtenerOrdenes();
+  const [productos, setProductos] = useState([]);
+  const [ordenes, setOrdenes] = useState([]);
   const usuarios = obtenerUsuarios();
 
   const [idEdicion, setIdEdicion] = useState('');
@@ -26,19 +27,25 @@ export function Admin() {
 
   useEffect(() => {
     fetchProductos();
+    fetchOrdenes();
   }, []);
 
-  const fetchProductos = () => {
-    ProductoService.getAllProductos()
-      .then((response) => {
-        if (Array.isArray(response.data)) {
-          setProductos(response.data);
-          guardarProductos(response.data);
-        }
-      })
-      .catch((error) => {
-        console.log('Error fetching productos:', error);
-      });
+  const fetchProductos = async () => {
+    try {
+      const data = await ProductoService.getAllProductos();
+      setProductos(data);
+    } catch (error) {
+      console.log('Error fetching productos:', error);
+    }
+  };
+
+  const fetchOrdenes = async () => {
+    try {
+      const data = await OrdenService.listarOrdenes();
+      setOrdenes(data);
+    } catch (error) {
+      console.log('Error fetching ordenes:', error);
+    }
   };
 
   const limpiar = () => {
@@ -64,19 +71,15 @@ export function Admin() {
     setMensaje('');
   };
 
-  const eliminar = (id) => {
-    ProductoService.deleteProducto(id)
-      .then(() => {
-        fetchProductos();
-        setMensaje('Producto eliminado.');
-      })
-      .catch((error) => {
-        console.log('Error deleting producto:', error);
-        const nuevaLista = productos.filter((p) => p.id !== id);
-        guardarProductos(nuevaLista);
-        setProductos(nuevaLista);
-        setMensaje('Producto eliminado.');
-      });
+  const eliminar = async (id) => {
+    try {
+      await ProductoService.deleteProducto(id);
+      fetchProductos();
+      setMensaje('Producto eliminado.');
+    } catch (error) {
+      console.log('Error deleting producto:', error);
+      setMensaje('Error al eliminar producto.');
+    }
   };
 
   const guardar = (e) => {
@@ -100,7 +103,6 @@ export function Admin() {
     };
 
     if (idEdicion !== '') {
-      // Editar producto existente (PUT)
       ProductoService.updateProducto(idEdicion, datosProducto)
         .then(() => {
           fetchProductos();
@@ -108,17 +110,9 @@ export function Admin() {
         })
         .catch((error) => {
           console.log('Error updating producto:', error);
-          const actualizados = productos.map((p) =>
-            p.id === Number(idEdicion)
-              ? { ...p, ...datosProducto, imagen: imagen || p.imagen }
-              : p
-          );
-          guardarProductos(actualizados);
-          setProductos(actualizados);
-          setMensaje('Producto actualizado correctamente.');
+          setMensaje('Error al actualizar producto.');
         });
     } else {
-      // Crear producto nuevo (POST)
       ProductoService.createProducto(datosProducto)
         .then(() => {
           fetchProductos();
@@ -126,14 +120,7 @@ export function Admin() {
         })
         .catch((error) => {
           console.log('Error creating producto:', error);
-          const nuevo = {
-            id: Date.now(),
-            ...datosProducto,
-          };
-          const nuevaLista = [...productos, nuevo];
-          guardarProductos(nuevaLista);
-          setProductos(nuevaLista);
-          setMensaje('Producto agregado correctamente.');
+          setMensaje('Error al crear producto.');
         });
     }
 
@@ -144,7 +131,6 @@ export function Admin() {
     <div className="container py-5">
       <h1 className="h3 mb-4">Panel de Administración</h1>
 
-      {/* Tarjetas de resumen */}
       <div className="row g-3 mb-4 text-center">
         <div className="col-md-4">
           <div className="card border-0 shadow-sm p-3">
@@ -169,7 +155,6 @@ export function Admin() {
       {mensaje && <div className="alert alert-info">{mensaje}</div>}
 
       <div className="row g-4">
-        {/* Formulario para Crear o Editar Producto */}
         <div className="col-lg-5">
           <form onSubmit={guardar} className="card border-0 shadow-sm p-4">
             <h2 className="h5 mb-3">
@@ -269,7 +254,6 @@ export function Admin() {
           </form>
         </div>
 
-        {/* Lista de Productos */}
         <div className="col-lg-7">
           <div className="card border-0 shadow-sm p-4">
             <h2 className="h5 mb-3">Lista de Productos</h2>
@@ -316,7 +300,7 @@ export function Admin() {
               <ul className="list-group list-group-flush small">
                 {ordenes.map((o, index) => (
                   <li key={index} className="list-group-item px-0">
-                    <strong>{o.nroOrden}</strong> — {o.datos?.nombre} (
+                    <strong>{o.nroOrden || o.id}</strong> — {o.datos?.nombre || o.email || 'Cliente'} (
                     {formatoClp(o.total)}) [{o.estado}]
                   </li>
                 ))}

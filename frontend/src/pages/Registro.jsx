@@ -5,7 +5,8 @@ import { Container, Card, Button } from 'react-bootstrap';
 
 import FormField from '../components/molecules/FormField.jsx';
 import Input from '../components/atoms/Input.jsx';
-import { registrarUsuario, esMayorDeEdad } from '../data/Products.js';
+import { esMayorDeEdad } from '../data/Products.js';
+import AuthService from '../services/AuthService.js';
 
 const PATRON_CORREO = /^[a-zA-Z0-9._%+-]+@(duoc\.cl|profesor\.duoc\.cl|gmail\.com)$/i;
 
@@ -29,7 +30,7 @@ export function Registro() {
     },
   });
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     setErrorGeneral('');
     setErrorPass2('');
     setErrorEdad('');
@@ -44,19 +45,23 @@ export function Registro() {
       return;
     }
 
-    const resultado = registrarUsuario({
-      nombre: data.nombre,
-      email: data.email,
-      password: data.password,
-      fechaNacimiento: data.fechaNacimiento,
-    });
+    try {
+      const response = await AuthService.registro({
+        nombre: data.nombre,
+        email: data.email,
+        password: data.password,
+        fechaNacimiento: data.fechaNacimiento,
+      });
 
-    if (!resultado.ok) {
-      setErrorGeneral('Este correo ya está registrado.');
-      return;
+      if (response.data?.ok === false) {
+        setErrorGeneral('Este correo ya está registrado.');
+        return;
+      }
+
+      navigate('/login');
+    } catch (error) {
+      setErrorGeneral('Error al registrar usuario. Intenta nuevamente.');
     }
-
-    navigate('/login');
   };
 
   return (

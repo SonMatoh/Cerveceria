@@ -5,7 +5,8 @@ import { Container, Card, Button } from 'react-bootstrap';
 
 import FormField from '../components/molecules/FormField.jsx';
 import Input from '../components/atoms/Input.jsx';
-import { iniciarSesion, autenticar } from '../data/Products.js';
+import { iniciarSesion } from '../data/Products.js';
+import AuthService from '../services/AuthService.js';
 
 const PATRON_CORREO = /^[a-zA-Z0-9._%+-]+@(duoc\.cl|profesor\.duoc\.cl|gmail\.com)$/i;
 
@@ -18,20 +19,25 @@ export function Login() {
     formState: { errors },
   } = useForm({ defaultValues: { email: '', password: '' } });
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     setErrorLogin('');
 
-    const usuario = autenticar(data.email, data.password);
-    if (!usuario) {
-      setErrorLogin('Email o contraseña incorrectos.');
-      return;
-    }
+    try {
+      const response = await AuthService.login(data);
+      const usuario = response.data?.usuario ?? response.data;
+      if (!usuario) {
+        setErrorLogin('Email o contraseña incorrectos.');
+        return;
+      }
 
-    iniciarSesion({ nombre: usuario.nombre, email: usuario.email, rol: usuario.rol });
-    if (window.actualizarNavbar) {
-      window.actualizarNavbar();
+      iniciarSesion({ nombre: usuario.nombre, email: usuario.email, rol: usuario.rol });
+      if (window.actualizarNavbar) {
+        window.actualizarNavbar();
+      }
+      navigate('/');
+    } catch (error) {
+      setErrorLogin('Email o contraseña incorrectos.');
     }
-    navigate('/');
   };
 
   return (

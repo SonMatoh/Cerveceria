@@ -1,15 +1,38 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Card } from 'react-bootstrap';
 import Image from '../components/atoms/Image.jsx';
 import Text from '../components/atoms/Text.jsx';
 import Button from '../components/atoms/Button.jsx';
-import { blogsIniciales } from '../data/Products.js';
+import BlogService from '../services/BlogService.js';
 
 export function BlogDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const post = blogsIniciales.find((b) => b.id === parseInt(id));
+  const [post, setPost] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadPost = async () => {
+      try {
+        const data = await BlogService.obtenerBlog(parseInt(id));
+        setPost(data);
+        setLoading(false);
+      } catch (error) {
+        console.log('Error al obtener artículo del backend:', error);
+        setLoading(false);
+      }
+    };
+    loadPost();
+  }, [parseInt(id)]);
+
+  if (loading) {
+    return (
+      <Container className="py-5 text-center">
+        <h2>Cargando artículo...</h2>
+      </Container>
+    );
+  }
 
   if (!post) {
     return (
@@ -38,7 +61,7 @@ export function BlogDetail() {
       <Card className="border-0 shadow-sm p-4">
         <div className="text-center mb-4">
           <Image
-            src={post.imagen}
+            src={post.imagenUrl || post.imagen}
             alt={post.titulo}
             style={{ maxHeight: '240px', objectFit: 'contain' }}
           />

@@ -1,26 +1,30 @@
 import axios from 'axios';
 
-const BASE_URL = '';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 class ProductoService {
-  getAllProductos() {
-    return axios.get(BASE_URL);
+  async getAllProductos() {
+    const response = await axios.get(BASE_URL);
+    return response.data._embedded?.productoList ?? response.data;
   }
 
-  getProductoById(id) {
-    return axios.get(`${BASE_URL}/${id}`);
+  async getProductoById(id) {
+    const response = await axios.get(`${BASE_URL}/${id}`);
+    return response.data;
   }
 
-  createProducto(producto) {
-    return axios.post(BASE_URL, producto);
+  async createProducto(producto) {
+    const response = await axios.post(BASE_URL, producto);
+    return response.data;
   }
 
-  updateProducto(id, producto) {
-    return axios.put(`${BASE_URL}/${id}`, producto);
+  async updateProducto(id, producto) {
+    const response = await axios.put(`${BASE_URL}/${id}`, producto);
+    return response.data;
   }
 
-  deleteProducto(id) {
-    return axios.delete(`${BASE_URL}/${id}`);
+  async deleteProducto(id) {
+    await axios.delete(`${BASE_URL}/${id}`);
   }
 }
 
