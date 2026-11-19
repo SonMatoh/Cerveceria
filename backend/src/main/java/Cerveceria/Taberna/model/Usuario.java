@@ -43,4 +43,8 @@ public class Usuario {
     @Past(message = "La fecha de nacimiento debe ser una fecha pasada")
     @Column(name = "fecha_nacimiento")
     private LocalDate fechaNacimiento;
+
+    @ManyToOne
+    @JoinColumn(name = "direccion_id")
+    private Direccion direccion;
 }

@@ -33,4 +33,8 @@ public class Producto {
 
     @Column(nullable = false)
     private Integer descuento;
+
+    @ManyToOne
+    @JoinColumn(name = "categoria_id")
+    private Categoria categoriaEntidad;
 }
