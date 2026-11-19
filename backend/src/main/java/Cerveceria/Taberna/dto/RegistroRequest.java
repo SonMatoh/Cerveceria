@@ -2,7 +2,6 @@ package Cerveceria.Taberna.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
 
 public class RegistroRequest {
@@ -21,7 +20,6 @@ public class RegistroRequest {
     private String password;
 
     @NotBlank(message = "La fecha de nacimiento es obligatoria")
-    @Past(message = "La fecha de nacimiento debe ser una fecha pasada")
     private String fechaNacimiento;
 
     public String getNombre() { return nombre; }

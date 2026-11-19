@@ -5,6 +5,9 @@ import Cerveceria.Taberna.model.Usuario;
 import Cerveceria.Taberna.repository.OrdenRepository;
 import Cerveceria.Taberna.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -13,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/ordenes")
@@ -26,25 +30,35 @@ public class OrdenController {
     private UsuarioRepository usuarioRepository;
 
     @GetMapping
-    public List<Orden> listarOrdenes(
+    public CollectionModel<EntityModel<Orden>> listarOrdenes(
             @RequestParam(required = false) Long usuarioId) {
+        List<Orden> ordenes;
         if (usuarioId != null) {
-            return ordenRepository.findAll().stream()
+            ordenes = ordenRepository.findAll().stream()
                     .filter(o -> o.getUsuarioId().equals(usuarioId))
-                    .toList();
+                    .collect(Collectors.toList());
+        } else {
+            ordenes = ordenRepository.findAll();
         }
-        return ordenRepository.findAll();
+
+        List<EntityModel<Orden>> ordenModels = ordenes.stream()
+                .map(this::toModel)
+                .collect(Collectors.toList());
+
+        return CollectionModel.of(ordenModels,
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(OrdenController.class).listarOrdenes(null)).withSelfRel());
     }
 
     @GetMapping("/{id}")
-    public Orden obtenerOrden(@PathVariable Long id) {
-        return ordenRepository.findById(id)
+    public EntityModel<Orden> obtenerOrden(@PathVariable Long id) {
+        Orden orden = ordenRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Orden " + id + " no existe"));
+        return toModel(orden);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Orden crearOrden(@RequestBody Map<String, Object> datos) {
+    public EntityModel<Orden> crearOrden(@RequestBody Map<String, Object> datos) {
         Long usuarioId = Long.valueOf(datos.get("usuarioId").toString());
         Integer total = Integer.valueOf(datos.get("total").toString());
         String estado = (String) datos.getOrDefault("estado", "pendiente");
@@ -60,14 +74,23 @@ public class OrdenController {
         orden.setFecha(LocalDateTime.now());
         orden.setEstado(estado);
 
-        return ordenRepository.save(orden);
+        Orden saved = ordenRepository.save(orden);
+        return toModel(saved);
     }
 
     @PutMapping("/{id}/estado")
-    public Orden actualizarEstado(@PathVariable Long id, @RequestBody Map<String, String> datos) {
+    public EntityModel<Orden> actualizarEstado(@PathVariable Long id, @RequestBody Map<String, String> datos) {
         Orden orden = ordenRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Orden " + id + " no existe"));
         orden.setEstado(datos.get("estado"));
-        return ordenRepository.save(orden);
+        Orden saved = ordenRepository.save(orden);
+        return toModel(saved);
+    }
+
+    private EntityModel<Orden> toModel(Orden orden) {
+        EntityModel<Orden> model = EntityModel.of(orden);
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(OrdenController.class).obtenerOrden(orden.getId())).withSelfRel());
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(OrdenController.class).listarOrdenes(null)).withRel("ordenes"));
+        return model;
     }
 }
