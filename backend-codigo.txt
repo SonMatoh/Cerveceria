@@ -1,0 +1,1187 @@
+﻿=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\TabernaApplication.java ===
+package Cerveceria.Taberna;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class TabernaApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(TabernaApplication.class, args);
+	}
+
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\config\WebConfig.java ===
+package Cerveceria.Taberna.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    // Como el front estÃ¡ en Vercel y el back en Render, entonces
+    // habilitamos CORS para que el navegador deje pasar las peticiones.
+    // No usamos allowCredentials porque el token viaja en el body, no en cookies.
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOriginPatterns("*")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .maxAge(3600);
+    }
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\controller\AuthController.java ===
+package Cerveceria.Taberna.controller;
+
+import Cerveceria.Taberna.dto.LoginRequest;
+import Cerveceria.Taberna.dto.RegistroRequest;
+import Cerveceria.Taberna.model.Usuario;
+import Cerveceria.Taberna.repository.UsuarioRepository;
+import Cerveceria.Taberna.util.ValidacionesUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
+
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/auth")
+@CrossOrigin(origins = "*")
+@Validated
+public class AuthController {
+
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    // Si tenemos una sesiÃ³n en memoria mientras dure la instancia,
+    // entonces guardamos acÃ¡ el correo del usuario que hizo login.
+    // Es temporal: cuando el front pide /es-admin volvemos a buscar al usuario
+    // en la BD para leer su rol de verdad.
+    private static String sesionEmail = null;
+
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest credenciales) {
+        String email = credenciales.getEmail().trim().toLowerCase();
+        String password = credenciales.getPassword();
+
+        // Si el correo no tiene formato vÃ¡lido, entonces ni buscamos en la BD:
+        // devolvemos 400 directo para que el front muestre el error en el formulario.
+        if (!ValidacionesUtil.esEmailValido(email)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "El formato del email es invÃ¡lido"));
+        }
+
+        // Si no encontramos el correo, entonces mandamos 401 "credenciales invÃ¡lidas"
+        // (no decimos que el usuario no existe, por seguridad).
+        Usuario usuario = usuarioRepository.findByEmail(email);
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Credenciales invÃ¡lidas"));
+        }
+
+        // Si la contraseÃ±a que viene no coincide con el hash guardado,
+        // entonces tampoco dejamos entrar: usamos BCrypt.matches, nunca texto plano.
+        if (!passwordEncoder.matches(password, usuario.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Credenciales invÃ¡lidas"));
+        }
+
+        // Si pasamos las dos validaciones, entonces marcamos la sesiÃ³n con este correo.
+        sesionEmail = email;
+
+        Map<String, Object> respuesta = new HashMap<>();
+        respuesta.put("token", "token-simulado-" + email);
+        respuesta.put("usuario", usuario);
+
+        EntityModel<Map<String, Object>> model = EntityModel.of(respuesta);
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).login(null)).withSelfRel());
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).sesion()).withRel("sesion"));
+
+        return ResponseEntity.ok(model);
+    }
+
+    @PostMapping("/registro")
+    public ResponseEntity<?> registro(@Valid @RequestBody RegistroRequest datos) {
+        String nombre = datos.getNombre().trim();
+        String email = datos.getEmail().trim().toLowerCase();
+        String password = datos.getPassword();
+        String fechaNacimientoStr = datos.getFechaNacimiento();
+
+        // Si el email no es vÃ¡lido, entonces ni seguimos con el registro.
+        if (!ValidacionesUtil.esEmailValido(email)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "El formato del email es invÃ¡lido"));
+        }
+
+        // Si el correo ya estÃ¡ en la BD, entonces no creamos otro usuario:
+        // el email es Ãºnico y se lo avisamos al front con un 400.
+        if (usuarioRepository.findByEmail(email) != null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "El email ya estÃ¡ registrado"));
+        }
+
+        // Si la fecha viene en otro formato, entonces no la podemos parsear:
+        // le pedimos YYYY-MM-DD para que el front sepa cÃ³mo enviarla.
+        LocalDate fechaNacimiento;
+        try {
+            fechaNacimiento = LocalDate.parse(fechaNacimientoStr);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Formato de fecha invÃ¡lido. Use YYYY-MM-DD"));
+        }
+
+        // Si la edad no estÃ¡ entre 18 y 120, entonces validarEdad lanza:
+        // la capturamos y le mandamos el mensaje al front con un 400.
+        try {
+            ValidacionesUtil.validarEdad(fechaNacimiento);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        }
+
+        // Si llegamos hasta acÃ¡, entonces armamos el usuario:
+        // guardamos la contraseÃ±a hasheada con BCrypt y el rol siempre "cliente"
+        // (los admin los creamos directo en Neon, no por este endpoint).
+        Usuario nuevo = new Usuario();
+        nuevo.setNombre(nombre);
+        nuevo.setEmail(email);
+        nuevo.setPassword(passwordEncoder.encode(password));
+        nuevo.setRol("cliente");
+        nuevo.setFechaNacimiento(fechaNacimiento);
+
+        usuarioRepository.save(nuevo);
+
+        Map<String, Object> respuesta = new HashMap<>();
+        respuesta.put("ok", true);
+        respuesta.put("mensaje", "Usuario registrado exitosamente");
+
+        EntityModel<Map<String, Object>> model = EntityModel.of(respuesta);
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).registro(null)).withSelfRel());
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).login(null)).withRel("login"));
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(model);
+    }
+
+    @GetMapping("/sesion")
+    public ResponseEntity<?> sesion() {
+        if (sesionEmail == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "No hay sesiÃ±n activa"));
+        }
+
+        Usuario usuario = usuarioRepository.findByEmail(sesionEmail);
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "SesiÃ±n invÃ±lida"));
+        }
+
+        EntityModel<Usuario> model = EntityModel.of(usuario);
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).sesion()).withSelfRel());
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).esAdmin()).withRel("es-admin"));
+
+        return ResponseEntity.ok(model);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        sesionEmail = null;
+        return ResponseEntity.ok(Map.of("mensaje", "SesiÃ±n cerrada"));
+    }
+
+    @GetMapping("/es-admin")
+    public ResponseEntity<?> esAdmin() {
+        if (sesionEmail == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("esAdmin", false));
+        }
+
+        Usuario usuario = usuarioRepository.findByEmail(sesionEmail);
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("esAdmin", false));
+        }
+
+        // Si hay sesiÃ³n, entonces comparamos el rol del usuario:
+        // con esto el front decide si muestra o no el botÃ³n de AdministraciÃ³n.
+        boolean esAdmin = "admin".equals(usuario.getRol());
+        return ResponseEntity.ok(Map.of("esAdmin", esAdmin));
+    }
+
+    /**
+     * Si @Valid encuentra campos malos, entonces armamos un mapa
+     * campo -> mensaje para que el front sepa exactamente quÃ© corregir.
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<?> manejarErroresValidacion(MethodArgumentNotValidException ex) {
+        Map<String, String> errores = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+            errores.put(error.getField(), error.getDefaultMessage())
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", "Datos invÃ±lidos", "campos", errores));
+    }
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\controller\BlogController.java ===
+package Cerveceria.Taberna.controller;
+
+import Cerveceria.Taberna.model.Blog;
+import Cerveceria.Taberna.repository.BlogRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/blog")
+@CrossOrigin(origins = "*")
+@Tag(name = "Blog", description = "ArtÃ­culos y publicaciones del blog de la taberna")
+public class BlogController {
+
+    @Autowired
+    private BlogRepository blogRepository;
+
+    @Operation(
+        summary = "Listar artÃ­culos del blog",
+        description = "Obtiene todos los artÃ­culos publicados",
+        responses = {
+            @ApiResponse(responseCode = "200", description = "Lista de artÃ­culos obtenida exitosamente")
+        }
+    )
+    @GetMapping
+    public CollectionModel<EntityModel<Blog>> listarBlog() {
+        List<Blog> blogs = blogRepository.findAll();
+
+        List<EntityModel<Blog>> blogModels = blogs.stream()
+                .map(this::toModel)
+                .collect(Collectors.toList());
+
+        return CollectionModel.of(blogModels,
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BlogController.class).listarBlog()).withSelfRel());
+    }
+
+    @Operation(
+        summary = "Obtener artÃ­culo por ID",
+        description = "Obtiene un artÃ­culo especÃ­fico de blog por su identificador",
+        responses = {
+            @ApiResponse(responseCode = "200", description = "ArtÃ­culo encontrado"),
+            @ApiResponse(responseCode = "404", description = "ArtÃ­culo no encontrado")
+        }
+    )
+    @GetMapping("/{id}")
+    public EntityModel<Blog> obtenerBlog(@PathVariable Long id) {
+        Blog blog = blogRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog " + id + " no existe"));
+        return toModel(blog);
+    }
+
+    // Cada artÃ­culo viaja con sus links HATEOAS:
+    // "self" para el detalle y "blog" para volver al listado completo.
+    private EntityModel<Blog> toModel(Blog blog) {
+        EntityModel<Blog> model = EntityModel.of(blog);
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BlogController.class).obtenerBlog(blog.getId())).withSelfRel());
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BlogController.class).listarBlog()).withRel("blog"));
+        return model;
+    }
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\controller\OrdenController.java ===
+package Cerveceria.Taberna.controller;
+
+import Cerveceria.Taberna.model.Orden;
+import Cerveceria.Taberna.model.Usuario;
+import Cerveceria.Taberna.repository.OrdenRepository;
+import Cerveceria.Taberna.repository.UsuarioRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/ordenes")
+@CrossOrigin(origins = "*")
+public class OrdenController {
+
+    @Autowired
+    private OrdenRepository ordenRepository;
+
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    @GetMapping
+    public CollectionModel<EntityModel<Orden>> listarOrdenes(
+            @RequestParam(required = false) Long usuarioId) {
+        List<Orden> ordenes;
+        if (usuarioId != null) {
+            ordenes = ordenRepository.findAll().stream()
+                    .filter(o -> o.getUsuarioId().equals(usuarioId))
+                    .collect(Collectors.toList());
+        } else {
+            ordenes = ordenRepository.findAll();
+        }
+
+        List<EntityModel<Orden>> ordenModels = ordenes.stream()
+                .map(this::toModel)
+                .collect(Collectors.toList());
+
+        return CollectionModel.of(ordenModels,
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(OrdenController.class).listarOrdenes(null)).withSelfRel());
+    }
+
+    @GetMapping("/{id}")
+    public EntityModel<Orden> obtenerOrden(@PathVariable Long id) {
+        Orden orden = ordenRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Orden " + id + " no existe"));
+        return toModel(orden);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public EntityModel<Orden> crearOrden(@RequestBody Map<String, Object> datos) {
+        Long usuarioId = Long.valueOf(datos.get("usuarioId").toString());
+        Integer total = Integer.valueOf(datos.get("total").toString());
+        String estado = (String) datos.getOrDefault("estado", "pendiente");
+
+        // Si el usuario de la orden no existe, entonces no guardamos nada:
+        // devolvemos 404 para que el checkout no cree una orden huÃ©rfana.
+        Optional<Usuario> usuarioOpt = usuarioRepository.findById(usuarioId);
+        if (usuarioOpt.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario " + usuarioId + " no existe");
+        }
+
+        Orden orden = new Orden();
+        orden.setUsuarioId(usuarioId);
+        orden.setTotal(total);
+        orden.setFecha(LocalDateTime.now());
+        orden.setEstado(estado);
+
+        Orden saved = ordenRepository.save(orden);
+        return toModel(saved);
+    }
+
+    @PutMapping("/{id}/estado")
+    public EntityModel<Orden> actualizarEstado(@PathVariable Long id, @RequestBody Map<String, String> datos) {
+        Orden orden = ordenRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Orden " + id + " no existe"));
+        orden.setEstado(datos.get("estado"));
+        Orden saved = ordenRepository.save(orden);
+        return toModel(saved);
+    }
+
+    private EntityModel<Orden> toModel(Orden orden) {
+        EntityModel<Orden> model = EntityModel.of(orden);
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(OrdenController.class).obtenerOrden(orden.getId())).withSelfRel());
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(OrdenController.class).listarOrdenes(null)).withRel("ordenes"));
+        return model;
+    }
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\controller\ProductoController.java ===
+package Cerveceria.Taberna.controller;
+
+import Cerveceria.Taberna.dto.ProductoRequest;
+import Cerveceria.Taberna.model.Producto;
+import Cerveceria.Taberna.repository.ProductoRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+
+import jakarta.validation.Valid;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/productos")
+@CrossOrigin(origins = "*")
+@Validated
+public class ProductoController {
+
+    @Autowired
+    private ProductoRepository productoRepository;
+
+    @GetMapping
+    public CollectionModel<EntityModel<Producto>> listarProductos(
+            @RequestParam(required = false) String categoria,
+            @RequestParam(required = false) String nombre) {
+        // Si el front manda una categorÃ­a, entonces filtramos por ella;
+        // si manda un nombre, buscamos ignorando mayÃºsculas;
+        // si no manda nada, entonces devolvemos todo el inventario.
+        List<Producto> productos;
+        if (categoria != null && !categoria.isEmpty()) {
+            productos = productoRepository.findByCategoria(categoria);
+        } else if (nombre != null && !nombre.isEmpty()) {
+            productos = productoRepository.findByNombreContainingIgnoreCase(nombre);
+        } else {
+            productos = productoRepository.findAll();
+        }
+
+        List<EntityModel<Producto>> productoModels = productos.stream()
+                .map(this::toModel)
+                .collect(Collectors.toList());
+
+        return CollectionModel.of(productoModels,
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(ProductoController.class).listarProductos(null, null)).withSelfRel());
+    }
+
+    @GetMapping("/{id}")
+    public EntityModel<Producto> obtenerProducto(@PathVariable Long id) {
+        Producto producto = productoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto " + id + " no existe"));
+        return toModel(producto);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public EntityModel<Producto> crearProducto(@Valid @RequestBody ProductoRequest datos) {
+        Producto producto = new Producto();
+        producto.setNombre(datos.getNombre());
+        producto.setEstilo(datos.getEstilo());
+        producto.setDescripcion(datos.getDescripcion());
+        producto.setPrecio(datos.getPrecio());
+        producto.setImagenUrl(datos.getImagenUrl());
+        producto.setCategoria(datos.getCategoria());
+        producto.setDescuento(datos.getDescuento());
+        Producto saved = productoRepository.save(producto);
+        return toModel(saved);
+    }
+
+    @PutMapping("/{id}")
+    public EntityModel<Producto> actualizarProducto(@PathVariable Long id, @Valid @RequestBody ProductoRequest datos) {
+        Producto producto = productoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto " + id + " no existe"));
+        producto.setNombre(datos.getNombre());
+        producto.setEstilo(datos.getEstilo());
+        producto.setDescripcion(datos.getDescripcion());
+        producto.setPrecio(datos.getPrecio());
+        producto.setImagenUrl(datos.getImagenUrl());
+        producto.setCategoria(datos.getCategoria());
+        producto.setDescuento(datos.getDescuento());
+        Producto saved = productoRepository.save(producto);
+        return toModel(saved);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void eliminarProducto(@PathVariable Long id) {
+        if (!productoRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto " + id + " no existe");
+        }
+        productoRepository.deleteById(id);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<?> manejarErroresValidacion(MethodArgumentNotValidException ex) {
+        Map<String, String> errores = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+            errores.put(error.getField(), error.getDefaultMessage())
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", "Datos invÃ¡lidos", "campos", errores));
+    }
+
+    // Envolvemos cada producto en EntityModel y le agregamos sus links HATEOAS:
+    // "self" para el detalle y "productos" para volver al listado.
+    private EntityModel<Producto> toModel(Producto producto) {
+        EntityModel<Producto> model = EntityModel.of(producto);
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(ProductoController.class).obtenerProducto(producto.getId())).withSelfRel());
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(ProductoController.class).listarProductos(null, null)).withRel("productos"));
+        return model;
+    }
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\controller\SaludController.java ===
+package Cerveceria.Taberna.controller;
+
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api")
+@Tag(name = "Salud", description = "Endpoints de verificaciÃ³n de estado del servicio")
+public class SaludController {
+
+    @Operation(
+        summary = "Health check",
+        description = "Verifica que el servicio estÃ© operativo",
+        responses = {
+            @ApiResponse(responseCode = "200", description = "Servicio saludable")
+        }
+    )
+    @GetMapping("/health")
+    public EntityModel<Map<String, String>> health() {
+        Map<String, String> body = new HashMap<>();
+        body.put("estado", "ok");
+        body.put("servicio", "La Taberna de Snorlax");
+        body.put("version", "1.0.0");
+
+        EntityModel<Map<String, String>> model = EntityModel.of(body);
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(SaludController.class).health()).withSelfRel());
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(ProductoController.class).listarProductos(null, null)).withRel("productos"));
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).esAdmin()).withRel("auth-status"));
+
+        return model;
+    }
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\dto\LoginRequest.java ===
+package Cerveceria.Taberna.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
+public class LoginRequest {
+
+    @NotBlank(message = "El email es obligatorio")
+    @Email(message = "El formato del email es invÃ¡lido")
+    private String email;
+
+    @NotBlank(message = "La contraseÃ±a es obligatoria")
+    private String password;
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\dto\ProductoRequest.java ===
+package Cerveceria.Taberna.dto;
+
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
+public class ProductoRequest {
+
+    @NotBlank(message = "El nombre es obligatorio")
+    @Size(max = 200, message = "El nombre no puede exceder 200 caracteres")
+    private String nombre;
+
+    @Size(max = 200, message = "El estilo no puede exceder 200 caracteres")
+    private String estilo;
+
+    @Size(max = 2000, message = "La descripciÃ³n no puede exceder 2000 caracteres")
+    private String descripcion;
+
+    @NotNull(message = "El precio es obligatorio")
+    @Min(value = 0, message = "El precio no puede ser negativo")
+    private Integer precio;
+
+    @Size(max = 500, message = "La URL de la imagen no puede exceder 500 caracteres")
+    private String imagenUrl;
+
+    @NotBlank(message = "La categorÃ­a es obligatoria")
+    private String categoria;
+
+    @NotNull(message = "El descuento es obligatorio")
+    @Min(value = 0, message = "El descuento no puede ser negativo")
+    @Max(value = 100, message = "El descuento no puede ser mayor a 100%")
+    private Integer descuento;
+
+    public String getNombre() { return nombre; }
+    public void setNombre(String nombre) { this.nombre = nombre; }
+
+    public String getEstilo() { return estilo; }
+    public void setEstilo(String estilo) { this.estilo = estilo; }
+
+    public String getDescripcion() { return descripcion; }
+    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
+
+    public Integer getPrecio() { return precio; }
+    public void setPrecio(Integer precio) { this.precio = precio; }
+
+    public String getImagenUrl() { return imagenUrl; }
+    public void setImagenUrl(String imagenUrl) { this.imagenUrl = imagenUrl; }
+
+    public String getCategoria() { return categoria; }
+    public void setCategoria(String categoria) { this.categoria = categoria; }
+
+    public Integer getDescuento() { return descuento; }
+    public void setDescuento(Integer descuento) { this.descuento = descuento; }
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\dto\RegistroRequest.java ===
+package Cerveceria.Taberna.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public class RegistroRequest {
+
+    @NotBlank(message = "El nombre es obligatorio")
+    @Size(max = 100, message = "El nombre no puede exceder 100 caracteres")
+    private String nombre;
+
+    @NotBlank(message = "El email es obligatorio")
+    @Email(message = "El formato del email es invÃ¡lido")
+    private String email;
+
+    @NotBlank(message = "La contraseÃ±a es obligatoria")
+    @Size(min = 6, message = "La contraseÃ±a debe tener al menos 6 caracteres")
+    @Size(max = 100, message = "La contraseÃ±a no puede exceder 100 caracteres")
+    private String password;
+
+    @NotBlank(message = "La fecha de nacimiento es obligatoria")
+    private String fechaNacimiento;
+
+    public String getNombre() { return nombre; }
+    public void setNombre(String nombre) { this.nombre = nombre; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+
+    public String getFechaNacimiento() { return fechaNacimiento; }
+    public void setFechaNacimiento(String fechaNacimiento) { this.fechaNacimiento = fechaNacimiento; }
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\model\Blog.java ===
+package Cerveceria.Taberna.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+@Entity
+@Table(name = "blogs")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Blog {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String titulo;
+
+    private String fecha;
+
+    private String autor;
+
+    private String imagenUrl;
+
+    @Column(columnDefinition = "TEXT")
+    private String resumen;
+
+    @Column(columnDefinition = "TEXT")
+    private String contenido;
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\model\Categoria.java ===
+package Cerveceria.Taberna.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "categorias")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Categoria {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 100)
+    private String nombre;
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\model\Comuna.java ===
+package Cerveceria.Taberna.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "comunas")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Comuna {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 100)
+    private String nombre;
+
+    @ManyToOne
+    @JoinColumn(name = "region_id", nullable = false)
+    private Region region;
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\model\DetalleOrden.java ===
+package Cerveceria.Taberna.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+
+public class DetalleOrden {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "orden_id", nullable = false)
+    private Orden orden;
+
+    @ManyToOne
+    @JoinColumn(name = "producto_id", nullable = false)
+    private Producto producto;
+
+    @Column(nullable = false)
+    private Integer cantidad;
+
+    @Column(name = "precio_unitario", nullable = false)
+    private Integer precioUnitario;
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\model\Direccion.java ===
+package Cerveceria.Taberna.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "direcciones")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Direccion {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 150)
+    private String calle;
+
+    @Column(length = 30)
+    private String numero;
+
+    @Column(length = 100)
+    private String complemento;
+
+    @ManyToOne
+    @JoinColumn(name = "comuna_id", nullable = false)
+    private Comuna comuna;
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\model\Imagen.java ===
+package Cerveceria.Taberna.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "imagenes")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Imagen {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 500)
+    private String url;
+
+    @ManyToOne
+    @JoinColumn(name = "producto_id", nullable = false)
+    private Producto producto;
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\model\Orden.java ===
+package Cerveceria.Taberna.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "ordenes")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Orden {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "usuario_id", nullable = false)
+    private Long usuarioId;
+
+    @Column(nullable = false)
+    private Integer total;
+
+    @Column(name = "fecha", nullable = false)
+    private LocalDateTime fecha;
+
+    @Column(nullable = false)
+    private String estado;
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\model\Producto.java ===
+package Cerveceria.Taberna.model;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+
+@Entity
+@Table(name = "productos")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Producto {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String nombre;
+
+    private String estilo;
+
+    @Column(columnDefinition = "TEXT")
+    private String descripcion;
+
+    @Column(nullable = false)
+    private Integer precio;
+
+    private String imagenUrl;
+
+    @Column(nullable = false)
+    private String categoria;
+
+    @Column(nullable = false)
+    private Integer descuento;
+
+    @ManyToOne
+    @JoinColumn(name = "categoria_id")
+    private Categoria categoriaEntidad;
+
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\model\Region.java ===
+package Cerveceria.Taberna.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "regiones")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Region {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 100)
+    private String nombre;
+    
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\model\Usuario.java ===
+package Cerveceria.Taberna.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Size;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "usuarios")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Usuario {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank(message = "El nombre es obligatorio")
+    @Size(max = 100)
+    @Column(nullable = false)
+    private String nombre;
+
+    @NotBlank(message = "El email es obligatorio")
+    @Email(message = "El formato del email es invÃ¡lido")
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    // Si serializamos el usuario, entonces nunca mandamos el password:
+    // por eso @JsonIgnore, para que el front jamÃ¡s reciba el hash.
+    @NotBlank(message = "La contraseÃ±a es obligatoria")
+    @JsonIgnore
+    @Column(nullable = false)
+    private String password;
+
+    @NotBlank(message = "El rol es obligatorio")
+    @Column(nullable = false)
+    private String rol;
+
+    @Past(message = "La fecha de nacimiento debe ser una fecha pasada")
+    @Column(name = "fecha_nacimiento")
+    private LocalDate fechaNacimiento;
+
+    @ManyToOne
+    @JoinColumn(name = "direccion_id")
+    private Direccion direccion;
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\repository\BlogRepository.java ===
+package Cerveceria.Taberna.repository;
+
+import Cerveceria.Taberna.model.Blog;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface BlogRepository extends JpaRepository<Blog, Long> {
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\repository\OrdenRepository.java ===
+package Cerveceria.Taberna.repository;
+
+import Cerveceria.Taberna.model.Orden;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface OrdenRepository extends JpaRepository<Orden, Long> {
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\repository\ProductoRepository.java ===
+package Cerveceria.Taberna.repository;
+
+import Cerveceria.Taberna.model.Producto;
+import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface ProductoRepository extends JpaRepository<Producto, Long> {
+    List<Producto> findByCategoria(String categoria);
+    List<Producto> findByNombreContainingIgnoreCase(String nombre);
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\repository\UsuarioRepository.java ===
+package Cerveceria.Taberna.repository;
+
+import Cerveceria.Taberna.model.Usuario;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
+    Usuario findByEmail(String email);
+}
+=== C:\Users\luisz\OneDrive\Desktop\Cerveceria-Fullweb\backend\src\main\java\Cerveceria\Taberna\util\ValidacionesUtil.java ===
+package Cerveceria.Taberna.util;
+
+import java.time.LocalDate;
+import java.time.Period;
+import java.util.regex.Pattern;
+
+/**
+ * Utilidades de validaciÃ³n para la Taberna de Snorlax.
+ * MÃ©todos estÃ¡ticos para poder probarlos sin depender de Spring.
+ */
+public class ValidacionesUtil {
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile(
+        "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+    );
+
+    private ValidacionesUtil() {
+        // Clase de utilidad, no se instancia
+    }
+
+    /**
+     * Valida que el email tenga un formato vÃ¡lido.
+     */
+    public static boolean esEmailValido(String email) {
+        return email != null && EMAIL_PATTERN.matcher(email).matches();
+    }
+
+    /**
+     * Valida que la edad estÃ© entre 18 y 120 aÃ±os.
+     * Lanza IllegalArgumentException si la edad no es vÃ¡lida.
+     */
+    public static void validarEdad(LocalDate fechaNacimiento) {
+        if (fechaNacimiento == null) {
+            throw new IllegalArgumentException("La fecha de nacimiento es obligatoria");
+        }
+
+        // Usamos Period (no solo restar aÃ±os) para respetar dÃ­a y mes:
+        // si todavÃ­a no cumpliÃ³ este aÃ±o, la edad no cuenta completo.
+        LocalDate hoy = LocalDate.now();
+        int edad = Period.between(fechaNacimiento, hoy).getYears();
+
+        // Si es menor de 18, entonces no puede registrarse (venta +18).
+        if (edad < 18) {
+            throw new IllegalArgumentException("Debes ser mayor de 18 aÃ±os para registrarte");
+        }
+        // Si pasa de 120, entonces la fecha es invÃ¡lida (probablemente un typo).
+        if (edad > 120) {
+            throw new IllegalArgumentException("La edad no puede ser mayor a 120 aÃ±os");
+        }
+    }
+}
