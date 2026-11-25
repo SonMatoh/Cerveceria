@@ -47,11 +47,11 @@ class AuthControllerTest {
     void registroExitosoDebeRetornar201() throws Exception {
         RegistroRequest request = new RegistroRequest();
         request.setNombre("Juan Perez");
-        request.setEmail("juan@email.com");
+        request.setEmail("juan@duoc.cl");
         request.setPassword("password123");
         request.setFechaNacimiento("2000-01-01");
 
-        Mockito.when(usuarioRepository.findByEmail("juan@email.com")).thenReturn(null);
+        Mockito.when(usuarioRepository.findByEmail("juan@duoc.cl")).thenReturn(null);
         Mockito.when(usuarioRepository.save(ArgumentMatchers.any(Usuario.class))).thenAnswer(invocation -> {
             Usuario u = invocation.getArgument(0);
             u.setId(1L);
@@ -69,14 +69,14 @@ class AuthControllerTest {
     void registroConEmailDuplicadoDebeRetornar400() throws Exception {
         RegistroRequest request = new RegistroRequest();
         request.setNombre("Juan Perez");
-        request.setEmail("juan@email.com");
+        request.setEmail("juan@duoc.cl");
         request.setPassword("password123");
         request.setFechaNacimiento("2000-01-01");
 
         Usuario existente = new Usuario();
         existente.setId(1L);
-        existente.setEmail("juan@email.com");
-        Mockito.when(usuarioRepository.findByEmail("juan@email.com")).thenReturn(existente);
+        existente.setEmail("juan@duoc.cl");
+        Mockito.when(usuarioRepository.findByEmail("juan@duoc.cl")).thenReturn(existente);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/api/auth/registro")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -88,11 +88,11 @@ class AuthControllerTest {
     void registroConEdadMenorA18DebeRetornar400() throws Exception {
         RegistroRequest request = new RegistroRequest();
         request.setNombre("Juan Perez");
-        request.setEmail("juan@email.com");
+        request.setEmail("juan@duoc.cl");
         request.setPassword("password123");
         request.setFechaNacimiento("2020-01-01"); // 6 años aprox
 
-        Mockito.when(usuarioRepository.findByEmail("juan@email.com")).thenReturn(null);
+        Mockito.when(usuarioRepository.findByEmail("juan@duoc.cl")).thenReturn(null);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/api/auth/registro")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -108,15 +108,15 @@ class AuthControllerTest {
         Usuario usuario = new Usuario();
         usuario.setId(1L);
         usuario.setNombre("Juan Perez");
-        usuario.setEmail("juan@email.com");
+        usuario.setEmail("juan@duoc.cl");
         usuario.setPassword(passwordHasheada);
         usuario.setRol("cliente");
         usuario.setFechaNacimiento(LocalDate.of(2000, 1, 1));
 
-        Mockito.when(usuarioRepository.findByEmail("juan@email.com")).thenReturn(usuario);
+        Mockito.when(usuarioRepository.findByEmail("juan@duoc.cl")).thenReturn(usuario);
 
         LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail("juan@email.com");
+        loginRequest.setEmail("juan@duoc.cl");
         loginRequest.setPassword(passwordPlano);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/api/auth/login")
@@ -132,13 +132,13 @@ class AuthControllerTest {
 
         Usuario usuario = new Usuario();
         usuario.setId(1L);
-        usuario.setEmail("juan@email.com");
+        usuario.setEmail("juan@duoc.cl");
         usuario.setPassword(passwordHasheada);
 
-        Mockito.when(usuarioRepository.findByEmail("juan@email.com")).thenReturn(usuario);
+        Mockito.when(usuarioRepository.findByEmail("juan@duoc.cl")).thenReturn(usuario);
 
         LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail("juan@email.com");
+        loginRequest.setEmail("juan@duoc.cl");
         loginRequest.setPassword("passwordIncorrecto");
 
         mockMvc.perform(MockMvcRequestBuilders.post("/api/auth/login")
@@ -149,10 +149,10 @@ class AuthControllerTest {
 
     @Test
     void loginConEmailNoRegistradoDebeRetornar401() throws Exception {
-        Mockito.when(usuarioRepository.findByEmail("noexiste@email.com")).thenReturn(null);
+        Mockito.when(usuarioRepository.findByEmail("noexiste@duoc.cl")).thenReturn(null);
 
         LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail("noexiste@email.com");
+        loginRequest.setEmail("noexiste@duoc.cl");
         loginRequest.setPassword("cualquiercosa");
 
         mockMvc.perform(MockMvcRequestBuilders.post("/api/auth/login")

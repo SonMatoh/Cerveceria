@@ -52,6 +52,43 @@ class ValidacionesUtilTest {
     }
 
     // -----------------------------------------------------------
+    // Pruebas para esEmailPermitido
+    // -----------------------------------------------------------
+
+    @Test
+    @DisplayName("Dominios permitidos retornan true")
+    void esEmailPermitido_conDominiosPermitidos_retornaTrue() {
+        Assertions.assertTrue(ValidacionesUtil.esEmailPermitido("alumno@duoc.cl"));
+        Assertions.assertTrue(ValidacionesUtil.esEmailPermitido("profesor@profesor.duoc.cl"));
+        Assertions.assertTrue(ValidacionesUtil.esEmailPermitido("usuario@gmail.com"));
+        Assertions.assertTrue(ValidacionesUtil.esEmailPermitido("USUARIO@GMAIL.COM"));
+    }
+
+    @Test
+    @DisplayName("Dominio no permitido retorna false")
+    void esEmailPermitido_conDominioNoPermitido_retornaFalse() {
+        Assertions.assertFalse(ValidacionesUtil.esEmailPermitido("usuario@email.com"));
+        Assertions.assertFalse(ValidacionesUtil.esEmailPermitido("usuario@hotmail.com"));
+        Assertions.assertFalse(ValidacionesUtil.esEmailPermitido("usuario@dominio.cl"));
+    }
+
+    @Test
+    @DisplayName("Email nulo o inválido retorna false")
+    void esEmailPermitido_conNuloOInvalido_retornaFalse() {
+        Assertions.assertFalse(ValidacionesUtil.esEmailPermitido(null));
+        Assertions.assertFalse(ValidacionesUtil.esEmailPermitido("sin-arroba"));
+    }
+
+    @Test
+    @DisplayName("Fecha futura lanza excepcion con mensaje claro")
+    void validarEdad_conFechaFutura_mensajeClaro() {
+        LocalDate fechaFutura = LocalDate.now().plusDays(1);
+        Exception ex = Assertions.assertThrows(IllegalArgumentException.class,
+            () -> ValidacionesUtil.validarEdad(fechaFutura));
+        Assertions.assertEquals("La fecha de nacimiento no puede ser futura", ex.getMessage());
+    }
+
+    // -----------------------------------------------------------
     // Pruebas para validarEdad
     // -----------------------------------------------------------
 
@@ -117,6 +154,6 @@ class ValidacionesUtilTest {
         LocalDate fechaFutura = LocalDate.now().plusYears(1);
         Exception ex = Assertions.assertThrows(IllegalArgumentException.class,
             () -> ValidacionesUtil.validarEdad(fechaFutura));
-        Assertions.assertEquals("Debes ser mayor de 18 años para registrarte", ex.getMessage());
+        Assertions.assertEquals("La fecha de nacimiento no puede ser futura", ex.getMessage());
     }
 }

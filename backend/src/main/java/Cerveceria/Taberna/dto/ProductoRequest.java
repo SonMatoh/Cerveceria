@@ -4,7 +4,9 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import org.hibernate.validator.constraints.URL;
 
 public class ProductoRequest {
 
@@ -22,10 +24,17 @@ public class ProductoRequest {
     @Min(value = 0, message = "El precio no puede ser negativo")
     private Integer precio;
 
+    // Si la imagen viene de ImgBB, entonces debe ser una URL válida (http/https).
+    @URL(message = "La URL de la imagen no es válida")
     @Size(max = 500, message = "La URL de la imagen no puede exceder 500 caracteres")
     private String imagenUrl;
 
+    // Solo permitimos las categorías del catálogo, para que el admin no invente otras.
     @NotBlank(message = "La categoría es obligatoria")
+    @Pattern(
+        regexp = "Cervezas|Shooters|Aperitivos",
+        message = "La categoría debe ser Cervezas, Shooters o Aperitivos"
+    )
     private String categoria;
 
     @NotNull(message = "El descuento es obligatorio")

@@ -48,11 +48,11 @@ public class AuthController {
         String email = credenciales.getEmail().trim().toLowerCase();
         String password = credenciales.getPassword();
 
-        // Si el correo no tiene formato válido, entonces ni buscamos en la BD:
-        // devolvemos 400 directo para que el front muestre el error en el formulario.
-        if (!ValidacionesUtil.esEmailValido(email)) {
+        // Si el correo no es de un dominio permitido, entonces ni buscamos
+        // en la BD: devolvemos 400 para que el front muestre el error en el formulario.
+        if (!ValidacionesUtil.esEmailPermitido(email)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "El formato del email es inválido"));
+                    .body(Map.of("error", "El correo debe ser @duoc.cl, @profesor.duoc.cl o @gmail.com"));
         }
 
         // Si no encontramos el correo, entonces mandamos 401 "credenciales inválidas"
@@ -79,7 +79,8 @@ public class AuthController {
 
         EntityModel<Map<String, Object>> model = EntityModel.of(respuesta);
         model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).login(null)).withSelfRel());
-        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).sesion()).withRel("sesion"));
+        model.add(
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).sesion()).withRel("sesion"));
 
         return ResponseEntity.ok(model);
     }
@@ -91,10 +92,11 @@ public class AuthController {
         String password = datos.getPassword();
         String fechaNacimientoStr = datos.getFechaNacimiento();
 
-        // Si el email no es válido, entonces ni seguimos con el registro.
-        if (!ValidacionesUtil.esEmailValido(email)) {
+        // Si el correo no es de un dominio permitido, entonces ni seguimos
+        // con el registro: el front debe mostrar los dominios aceptados.
+        if (!ValidacionesUtil.esEmailPermitido(email)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "El formato del email es inválido"));
+                    .body(Map.of("error", "El correo debe ser @duoc.cl, @profesor.duoc.cl o @gmail.com"));
         }
 
         // Si el correo ya está en la BD, entonces no creamos otro usuario:
@@ -140,8 +142,10 @@ public class AuthController {
         respuesta.put("mensaje", "Usuario registrado exitosamente");
 
         EntityModel<Map<String, Object>> model = EntityModel.of(respuesta);
-        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).registro(null)).withSelfRel());
-        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).login(null)).withRel("login"));
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).registro(null))
+                .withSelfRel());
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).login(null))
+                .withRel("login"));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(model);
     }
@@ -150,18 +154,19 @@ public class AuthController {
     public ResponseEntity<?> sesion() {
         if (sesionEmail == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "No hay sesiñn activa"));
+                    .body(Map.of("error", "No hay sesión activa"));
         }
 
         Usuario usuario = usuarioRepository.findByEmail(sesionEmail);
         if (usuario == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Sesiñn invñlida"));
+                    .body(Map.of("error", "Sesión inválida"));
         }
 
         EntityModel<Usuario> model = EntityModel.of(usuario);
         model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).sesion()).withSelfRel());
-        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).esAdmin()).withRel("es-admin"));
+        model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).esAdmin())
+                .withRel("es-admin"));
 
         return ResponseEntity.ok(model);
     }
@@ -169,7 +174,7 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
         sesionEmail = null;
-        return ResponseEntity.ok(Map.of("mensaje", "Sesiñn cerrada"));
+        return ResponseEntity.ok(Map.of("mensaje", "Sesión cerrada"));
     }
 
     @GetMapping("/es-admin")
@@ -198,10 +203,9 @@ public class AuthController {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> manejarErroresValidacion(MethodArgumentNotValidException ex) {
         Map<String, String> errores = new HashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(error ->
-            errores.put(error.getField(), error.getDefaultMessage())
-        );
+        ex.getBindingResult().getFieldErrors()
+                .forEach(error -> errores.put(error.getField(), error.getDefaultMessage()));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("error", "Datos invñlidos", "campos", errores));
+                .body(Map.of("error", "Datos inválidos", "campos", errores));
     }
 }
