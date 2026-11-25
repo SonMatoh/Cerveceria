@@ -48,7 +48,7 @@ class AuthControllerTest {
         RegistroRequest request = new RegistroRequest();
         request.setNombre("Juan Perez");
         request.setEmail("juan@duoc.cl");
-        request.setPassword("password123");
+        request.setPassword("Password123");
         request.setFechaNacimiento("2000-01-01");
 
         Mockito.when(usuarioRepository.findByEmail("juan@duoc.cl")).thenReturn(null);
@@ -66,11 +66,64 @@ class AuthControllerTest {
     }
 
     @Test
+    void registroConPasswordSinMayusculaDebeRetornar400() throws Exception {
+        RegistroRequest request = new RegistroRequest();
+        request.setNombre("Juan Perez");
+        request.setEmail("juan@duoc.cl");
+        request.setPassword("password123"); // sin mayúscula
+        request.setFechaNacimiento("2000-01-01");
+
+        Mockito.when(usuarioRepository.findByEmail("juan@duoc.cl")).thenReturn(null);
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/api/auth/registro")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(MockMvcResultMatchers.status().isBadRequest());
+    }
+
+    @Test
+    void registroConPasswordSinNumeroNiEspecialDebeRetornar400() throws Exception {
+        RegistroRequest request = new RegistroRequest();
+        request.setNombre("Juan Perez");
+        request.setEmail("juan@duoc.cl");
+        request.setPassword("PASSWORDabc"); // mayúscula sí, pero sin número ni especial
+        request.setFechaNacimiento("2000-01-01");
+
+        Mockito.when(usuarioRepository.findByEmail("juan@duoc.cl")).thenReturn(null);
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/api/auth/registro")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(MockMvcResultMatchers.status().isBadRequest());
+    }
+
+    @Test
+    void registroConPasswordConEspecialDebeRetornar201() throws Exception {
+        RegistroRequest request = new RegistroRequest();
+        request.setNombre("Juan Perez");
+        request.setEmail("juan@duoc.cl");
+        request.setPassword("Password@abc"); // mayúscula + especial (sin número)
+        request.setFechaNacimiento("2000-01-01");
+
+        Mockito.when(usuarioRepository.findByEmail("juan@duoc.cl")).thenReturn(null);
+        Mockito.when(usuarioRepository.save(ArgumentMatchers.any(Usuario.class))).thenAnswer(invocation -> {
+            Usuario u = invocation.getArgument(0);
+            u.setId(1L);
+            return u;
+        });
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/api/auth/registro")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(MockMvcResultMatchers.status().isCreated());
+    }
+
+    @Test
     void registroConEmailDuplicadoDebeRetornar400() throws Exception {
         RegistroRequest request = new RegistroRequest();
         request.setNombre("Juan Perez");
         request.setEmail("juan@duoc.cl");
-        request.setPassword("password123");
+        request.setPassword("Password123");
         request.setFechaNacimiento("2000-01-01");
 
         Usuario existente = new Usuario();
@@ -89,7 +142,7 @@ class AuthControllerTest {
         RegistroRequest request = new RegistroRequest();
         request.setNombre("Juan Perez");
         request.setEmail("juan@duoc.cl");
-        request.setPassword("password123");
+        request.setPassword("Password123");
         request.setFechaNacimiento("2020-01-01"); // 6 años aprox
 
         Mockito.when(usuarioRepository.findByEmail("juan@duoc.cl")).thenReturn(null);

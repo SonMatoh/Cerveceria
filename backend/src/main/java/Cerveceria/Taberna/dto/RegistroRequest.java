@@ -2,6 +2,7 @@ package Cerveceria.Taberna.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public class RegistroRequest {
@@ -17,6 +18,10 @@ public class RegistroRequest {
     @NotBlank(message = "La contraseña es obligatoria")
     @Size(min = 6, message = "La contraseña debe tener al menos 6 caracteres")
     @Size(max = 100, message = "La contraseña no puede exceder 100 caracteres")
+    @Pattern(
+        regexp = "^(?=.*[A-Z])(?=.*[0-9]|.*[^A-Za-z0-9\\s]).{6,100}$",
+        message = "La contraseña debe tener al menos 1 mayúscula y 1 número o carácter especial"
+    )
     private String password;
 
     @NotBlank(message = "La fecha de nacimiento es obligatoria")
