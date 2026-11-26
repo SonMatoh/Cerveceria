@@ -45,4 +45,6 @@ public class Producto {
     @JoinColumn(name = "categoria_id")
     private Categoria categoriaEntidad;
 
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private Integer stock;
 }

@@ -20,7 +20,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import Cerveceria.Taberna.dto.ProductoRequest;
 import Cerveceria.Taberna.model.Producto;
+import Cerveceria.Taberna.repository.ImagenRepository;
 import Cerveceria.Taberna.repository.ProductoRepository;
+import Cerveceria.Taberna.service.ImagenService;
 
 @WebMvcTest(ProductoController.class)
 class ProductoControllerTest {
@@ -33,6 +35,12 @@ class ProductoControllerTest {
 
     @MockitoBean
     private ProductoRepository productoRepository;
+
+    @MockitoBean
+    private ImagenRepository imagenRepository;
+
+    @MockitoBean
+    private ImagenService imagenService;
 
     @Test
     void listarProductosDebeRetornarLista() throws Exception {

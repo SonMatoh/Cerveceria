@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "blogs")
@@ -23,7 +24,8 @@ public class Blog {
     @Column(nullable = false)
     private String titulo;
 
-    private String fecha;
+    @Column(name = "fecha")
+    private LocalDate fecha;
 
     private String autor;
 

@@ -1,13 +1,17 @@
 package Cerveceria.Taberna.controller;
 
 import Cerveceria.Taberna.dto.ProductoRequest;
+import Cerveceria.Taberna.model.Imagen;
 import Cerveceria.Taberna.model.Producto;
+import Cerveceria.Taberna.repository.ImagenRepository;
 import Cerveceria.Taberna.repository.ProductoRepository;
+import Cerveceria.Taberna.service.ImagenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -23,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.validation.Valid;
@@ -40,6 +45,12 @@ public class ProductoController {
 
     @Autowired
     private ProductoRepository productoRepository;
+
+    @Autowired
+    private ImagenRepository imagenRepository;
+
+    @Autowired
+    private ImagenService imagenService;
 
     @GetMapping
     public CollectionModel<EntityModel<Producto>> listarProductos(
@@ -109,6 +120,32 @@ public class ProductoController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto " + id + " no existe");
         }
         productoRepository.deleteById(id);
+    }
+
+    @PostMapping(value = "/{id}/imagen", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> subirImagen(@PathVariable Long id,
+                                         @RequestParam("imagen") MultipartFile archivo) {
+        Producto producto = productoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto " + id + " no existe"));
+
+        try {
+            String url = imagenService.subirImagen(archivo);
+
+            // Guardar en tabla de imágenes
+            Imagen imagen = new Imagen();
+            imagen.setUrl(url);
+            imagen.setProducto(producto);
+            imagenRepository.save(imagen);
+
+            // Actualizar URL principal del producto
+            producto.setImagenUrl(url);
+            productoRepository.save(producto);
+
+            return ResponseEntity.ok(Map.of("url", url, "productoId", producto.getId()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "No se pudo subir la imagen: " + e.getMessage()));
+        }
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
