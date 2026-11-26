@@ -18,6 +18,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,6 +28,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/comunas")
 @CrossOrigin(origins = "*")
+@Tag(name = "Comunas", description = "Catálogo de comunas filtrables por región")
 public class ComunaController {
 
     @Autowired
@@ -33,6 +37,8 @@ public class ComunaController {
     @Autowired
     private RegionRepository regionRepository;
 
+    @Operation(summary = "Listar comunas", description = "Obtiene comunas, opcionalmente filtradas por región",
+        responses = { @ApiResponse(responseCode = "200", description = "Lista de comunas") })
     @GetMapping
     public List<ComunaDTO> listar(@RequestParam(required = false) Long region) {
         List<Comuna> comunas;
@@ -46,6 +52,9 @@ public class ComunaController {
                 .collect(Collectors.toList());
     }
 
+    @Operation(summary = "Crear comuna", description = "Agrega una comuna asociada a una región",
+        responses = { @ApiResponse(responseCode = "201", description = "Comuna creada"),
+                      @ApiResponse(responseCode = "409", description = "Ya existe en esa región") })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional

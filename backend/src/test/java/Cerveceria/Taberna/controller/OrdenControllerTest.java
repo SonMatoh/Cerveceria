@@ -22,8 +22,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 @WebMvcTest(OrdenController.class)
 class OrdenControllerTest {
@@ -68,12 +68,12 @@ class OrdenControllerTest {
         List<Orden> ordenes = Arrays.asList(o1, o2);
         Mockito.when(ordenRepository.findAllByOrderByIdDesc()).thenReturn(ordenes);
 
-        mockMvc.perform(get("/api/ordenes"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].total").value(5000))
-                .andExpect(jsonPath("$[1].id").value(2))
-                .andExpect(jsonPath("$[1].total").value(3000));
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/ordenes"))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].id").value(1))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].total").value(5000))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[1].id").value(2))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[1].total").value(3000));
     }
 
     @Test
@@ -102,22 +102,22 @@ class OrdenControllerTest {
         String json = "{ \"usuarioId\": 1, \"estado\": \"pendiente\", " +
                 "\"items\": [ { \"productoId\": 10, \"cantidad\": 2 } ] }";
 
-        mockMvc.perform(post("/api/ordenes")
+        mockMvc.perform(MockMvcRequestBuilders.post("/api/ordenes")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(100))
-                .andExpect(jsonPath("$.total").value(10000));
+                .andExpect(MockMvcResultMatchers.status().isCreated())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.id").value(100))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.total").value(10000));
     }
 
     @Test
     void crearOrdenConUsuarioInexistenteDebeRetornar400() throws Exception {
         String json = "{ \"usuarioId\": 999, \"estado\": \"pendiente\", \"items\": [] }";
 
-        mockMvc.perform(post("/api/ordenes")
+        mockMvc.perform(MockMvcRequestBuilders.post("/api/ordenes")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
-                .andExpect(status().isBadRequest());
+                .andExpect(MockMvcResultMatchers.status().isBadRequest());
     }
 
     @Test
@@ -126,9 +126,9 @@ class OrdenControllerTest {
 
         String json = "{ \"usuarioId\": 1, \"estado\": \"pendiente\", \"items\": [] }";
 
-        mockMvc.perform(post("/api/ordenes")
+        mockMvc.perform(MockMvcRequestBuilders.post("/api/ordenes")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
-                .andExpect(status().isBadRequest());
+                .andExpect(MockMvcResultMatchers.status().isBadRequest());
     }
 }

@@ -29,6 +29,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import jakarta.validation.Valid;
 
@@ -41,6 +44,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/productos")
 @CrossOrigin(origins = "*")
 @Validated
+@Tag(name = "Productos", description = "Catálogo de cervezas de la taberna")
 public class ProductoController {
 
     @Autowired
@@ -52,6 +56,8 @@ public class ProductoController {
     @Autowired
     private ImagenService imagenService;
 
+    @Operation(summary = "Listar productos", description = "Obtiene el catálogo, con filtros opcionales por categoría o nombre",
+        responses = { @ApiResponse(responseCode = "200", description = "Lista de productos") })
     @GetMapping
     public CollectionModel<EntityModel<Producto>> listarProductos(
             @RequestParam(required = false) String categoria,
@@ -76,6 +82,9 @@ public class ProductoController {
                 WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(ProductoController.class).listarProductos(null, null)).withSelfRel());
     }
 
+    @Operation(summary = "Producto por ID", description = "Obtiene un producto por su identificador",
+        responses = { @ApiResponse(responseCode = "200", description = "Producto encontrado"),
+                      @ApiResponse(responseCode = "404", description = "Producto no existe") })
     @GetMapping("/{id}")
     public EntityModel<Producto> obtenerProducto(@PathVariable Long id) {
         Producto producto = productoRepository.findById(id)
@@ -83,6 +92,9 @@ public class ProductoController {
         return toModel(producto);
     }
 
+    @Operation(summary = "Crear producto", description = "Crea un producto con stock y categoría",
+        responses = { @ApiResponse(responseCode = "201", description = "Producto creado"),
+                      @ApiResponse(responseCode = "400", description = "Datos inválidos") })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public EntityModel<Producto> crearProducto(@Valid @RequestBody ProductoRequest datos) {
@@ -94,10 +106,14 @@ public class ProductoController {
         producto.setImagenUrl(datos.getImagenUrl());
         producto.setCategoria(datos.getCategoria());
         producto.setDescuento(datos.getDescuento());
+        producto.setStock(datos.getStock());
         Producto saved = productoRepository.save(producto);
         return toModel(saved);
     }
 
+    @Operation(summary = "Actualizar producto", description = "Modifica los datos de un producto",
+        responses = { @ApiResponse(responseCode = "200", description = "Producto actualizado"),
+                      @ApiResponse(responseCode = "404", description = "Producto no existe") })
     @PutMapping("/{id}")
     public EntityModel<Producto> actualizarProducto(@PathVariable Long id, @Valid @RequestBody ProductoRequest datos) {
         Producto producto = productoRepository.findById(id)
@@ -109,10 +125,14 @@ public class ProductoController {
         producto.setImagenUrl(datos.getImagenUrl());
         producto.setCategoria(datos.getCategoria());
         producto.setDescuento(datos.getDescuento());
+        producto.setStock(datos.getStock());
         Producto saved = productoRepository.save(producto);
         return toModel(saved);
     }
 
+    @Operation(summary = "Eliminar producto", description = "Borra un producto del catálogo",
+        responses = { @ApiResponse(responseCode = "204", description = "Producto eliminado"),
+                      @ApiResponse(responseCode = "404", description = "Producto no existe") })
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void eliminarProducto(@PathVariable Long id) {
@@ -122,6 +142,9 @@ public class ProductoController {
         productoRepository.deleteById(id);
     }
 
+    @Operation(summary = "Subir imagen", description = "Sube una imagen del producto a ImgBB",
+        responses = { @ApiResponse(responseCode = "200", description = "Imagen subida"),
+                      @ApiResponse(responseCode = "400", description = "No se pudo subir") })
     @PostMapping(value = "/{id}/imagen", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> subirImagen(@PathVariable Long id,
                                          @RequestParam("imagen") MultipartFile archivo) {

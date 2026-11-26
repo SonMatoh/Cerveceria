@@ -21,6 +21,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +32,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/ordenes")
 @CrossOrigin(origins = "*")
+@Tag(name = "Órdenes", description = "Checkout real: calcula total, descuenta stock y guarda ítems")
 public class OrdenController {
 
     @Autowired
@@ -40,6 +44,8 @@ public class OrdenController {
     @Autowired
     private ProductoRepository productoRepository;
 
+    @Operation(summary = "Listar órdenes", description = "Devuelve todas las órdenes, más recientes primero",
+        responses = { @ApiResponse(responseCode = "200", description = "Lista de órdenes") })
     @GetMapping
     public List<OrdenResponse> listar() {
         return ordenRepository.findAllByOrderByIdDesc().stream()
@@ -47,6 +53,9 @@ public class OrdenController {
                 .collect(Collectors.toList());
     }
 
+    @Operation(summary = "Orden por ID", description = "Obtiene una orden con sus ítems",
+        responses = { @ApiResponse(responseCode = "200", description = "Orden encontrada"),
+                      @ApiResponse(responseCode = "404", description = "Orden no existe") })
     @GetMapping("/{id}")
     public OrdenResponse obtener(@PathVariable Long id) {
         Orden orden = ordenRepository.findById(id)
@@ -54,6 +63,9 @@ public class OrdenController {
         return toResponse(orden);
     }
 
+    @Operation(summary = "Crear orden (checkout)", description = "Valida stock, calcula precios, descuenta unidades y guarda el detalle",
+        responses = { @ApiResponse(responseCode = "201", description = "Orden creada"),
+                      @ApiResponse(responseCode = "400", description = "Stock insuficiente o datos inválidos") })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional

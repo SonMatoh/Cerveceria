@@ -100,6 +100,7 @@ class ProductoControllerTest {
         request.setPrecio(5000);
         request.setCategoria("Cervezas");
         request.setDescuento(0);
+        request.setStock(10);
 
         Producto productoGuardado = new Producto();
         productoGuardado.setId(1L);
@@ -123,6 +124,8 @@ class ProductoControllerTest {
         request.setNombre("Producto");
         request.setPrecio(-100);
         request.setCategoria("Cervezas");
+        request.setDescuento(0);
+        request.setStock(10);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/api/productos")
                 .contentType(MediaType.APPLICATION_JSON)

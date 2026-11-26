@@ -64,6 +64,3 @@ Thumbs.db
 .postman/
 postman/
 
-# --- Docs temporales de integración (solo locales) ---
-docs/INTEGRACION_FRONT_BACK.md
-docs/actualizar_imagenes_imgbb.sql

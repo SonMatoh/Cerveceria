@@ -20,6 +20,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 import java.time.LocalDate;
@@ -30,6 +33,7 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "*")
 @Validated
+@Tag(name = "Autenticación", description = "Login, registro y sesión de usuarios")
 public class AuthController {
 
     @Autowired
@@ -43,6 +47,9 @@ public class AuthController {
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
+    @Operation(summary = "Iniciar sesión", description = "Valida credenciales y devuelve token simulado",
+        responses = { @ApiResponse(responseCode = "200", description = "Login exitoso"),
+                      @ApiResponse(responseCode = "401", description = "Credenciales inválidas") })
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest credenciales) {
         String email = credenciales.getEmail().trim().toLowerCase();
@@ -85,6 +92,9 @@ public class AuthController {
         return ResponseEntity.ok(model);
     }
 
+    @Operation(summary = "Registrar usuario", description = "Crea un cliente validando correo, contraseña y edad",
+        responses = { @ApiResponse(responseCode = "201", description = "Usuario creado"),
+                      @ApiResponse(responseCode = "400", description = "Datos inválidos") })
     @PostMapping("/registro")
     public ResponseEntity<?> registro(@Valid @RequestBody RegistroRequest datos) {
         String nombre = datos.getNombre().trim();
@@ -150,6 +160,9 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(model);
     }
 
+    @Operation(summary = "Sesión activa", description = "Devuelve el usuario logueado",
+        responses = { @ApiResponse(responseCode = "200", description = "Sesión activa"),
+                      @ApiResponse(responseCode = "401", description = "Sin sesión") })
     @GetMapping("/sesion")
     public ResponseEntity<?> sesion() {
         if (sesionEmail == null) {
@@ -171,12 +184,16 @@ public class AuthController {
         return ResponseEntity.ok(model);
     }
 
+    @Operation(summary = "Cerrar sesión", description = "Limpia la sesión en memoria",
+        responses = { @ApiResponse(responseCode = "200", description = "Sesión cerrada") })
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
         sesionEmail = null;
         return ResponseEntity.ok(Map.of("mensaje", "Sesión cerrada"));
     }
 
+    @Operation(summary = "Verificar admin", description = "Indica si el usuario logueado es administrador",
+        responses = { @ApiResponse(responseCode = "200", description = "Resultado del rol") })
     @GetMapping("/es-admin")
     public ResponseEntity<?> esAdmin() {
         if (sesionEmail == null) {

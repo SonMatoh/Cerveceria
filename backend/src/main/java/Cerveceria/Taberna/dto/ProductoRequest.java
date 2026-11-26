@@ -42,6 +42,12 @@ public class ProductoRequest {
     @Max(value = 100, message = "El descuento no puede ser mayor a 100%")
     private Integer descuento;
 
+    // Si el admin crea un producto, entonces debe decir cuántas unidades hay:
+    // sin stock el checkout no puede venderlo (y la BD no acepta NULL).
+    @NotNull(message = "El stock es obligatorio")
+    @Min(value = 0, message = "El stock no puede ser negativo")
+    private Integer stock;
+
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
 
@@ -62,4 +68,7 @@ public class ProductoRequest {
 
     public Integer getDescuento() { return descuento; }
     public void setDescuento(Integer descuento) { this.descuento = descuento; }
+
+    public Integer getStock() { return stock; }
+    public void setStock(Integer stock) { this.stock = stock; }
 }

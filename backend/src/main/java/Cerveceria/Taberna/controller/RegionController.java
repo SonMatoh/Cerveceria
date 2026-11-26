@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -22,11 +25,14 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/regiones")
 @CrossOrigin(origins = "*")
+@Tag(name = "Regiones", description = "Catálogo de regiones de Chile")
 public class RegionController {
 
     @Autowired
     private RegionRepository regionRepository;
 
+    @Operation(summary = "Listar regiones", description = "Devuelve las 16 regiones ordenadas",
+        responses = { @ApiResponse(responseCode = "200", description = "Lista de regiones") })
     @GetMapping
     public List<RegionDTO> listar() {
         return regionRepository.findAllByOrderByIdAsc().stream()
@@ -34,6 +40,9 @@ public class RegionController {
                 .collect(Collectors.toList());
     }
 
+    @Operation(summary = "Crear región", description = "Agrega una región al catálogo",
+        responses = { @ApiResponse(responseCode = "201", description = "Región creada"),
+                      @ApiResponse(responseCode = "409", description = "Ya existe") })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional
