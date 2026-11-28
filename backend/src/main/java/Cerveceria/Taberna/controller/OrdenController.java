@@ -48,6 +48,7 @@ public class OrdenController {
     @Operation(summary = "Listar órdenes", description = "Devuelve todas las órdenes, más recientes primero",
         responses = { @ApiResponse(responseCode = "200", description = "Lista de órdenes") })
     @GetMapping
+    @Transactional(readOnly = true)
     public List<OrdenResponse> listar() {
         List<Orden> ordenes = ordenRepository.findAllByOrderByIdDesc();
         List<OrdenResponse> respuestas = new ArrayList<>();
@@ -61,6 +62,7 @@ public class OrdenController {
         responses = { @ApiResponse(responseCode = "200", description = "Orden encontrada"),
                       @ApiResponse(responseCode = "404", description = "Orden no existe") })
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     public OrdenResponse obtener(@PathVariable Long id) {
         Orden orden = ordenRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Orden " + id + " no existe"));
@@ -170,12 +172,11 @@ public class OrdenController {
         if (orden.getDetalles() != null) {
             for (int i = 0; i < orden.getDetalles().size(); i++) {
                 DetalleOrden d = orden.getDetalles().get(i);
-                items.add(new OrdenItemResponse(
-                        d.getProducto().getId(),
-                        d.getProducto().getNombre(),
-                        d.getCantidad(),
-                        d.getPrecioUnitario()
-                ));
+                Long prodId = d.getProducto() != null ? d.getProducto().getId() : null;
+                String prodNombre = d.getProducto() != null ? d.getProducto().getNombre() : "Producto eliminado";
+                int cantidad = d.getCantidad() != null ? d.getCantidad() : 0;
+                int precioUnit = d.getPrecioUnitario() != null ? d.getPrecioUnitario() : 0;
+                items.add(new OrdenItemResponse(prodId, prodNombre, cantidad, precioUnit));
             }
         }
 
@@ -184,13 +185,18 @@ public class OrdenController {
             nroOrden = "ORDER-" + orden.getId();
         }
 
+        int subtotal = orden.getSubtotal() != null ? orden.getSubtotal() : 0;
+        int descuento = orden.getDescuento() != null ? orden.getDescuento() : 0;
+        int total = orden.getTotal() != null ? orden.getTotal() : 0;
+        String estado = orden.getEstado() != null ? orden.getEstado() : "pendiente";
+
         return new OrdenResponse(
                 orden.getId(),
                 nroOrden,
-                orden.getSubtotal(),
-                orden.getDescuento(),
-                orden.getTotal(),
-                orden.getEstado(),
+                subtotal,
+                descuento,
+                total,
+                estado,
                 items
         );
     }
