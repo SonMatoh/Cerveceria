@@ -27,6 +27,11 @@ class AuthService {
     const response = await axios.get(`${BASE_URL}/auth/es-admin`);
     return response.data;
   }
+
+  async listarUsuarios() {
+    const response = await axios.get(`${BASE_URL}/auth/usuarios`);
+    return Array.isArray(response.data) ? response.data : [];
+  }
 }
 
 export default new AuthService();
