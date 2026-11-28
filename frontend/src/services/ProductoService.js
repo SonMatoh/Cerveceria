@@ -5,13 +5,23 @@ const API_BASE =
   'http://localhost:8080/api';
 
 const BASE_URL = `${API_BASE}/productos`;
+const IMAGEN_DEFECTO = 'https://i.ibb.co/GQGFSK2B/pika.png';
+
+function normalizarUrl(url) {
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    return url.trim();
+  }
+  return IMAGEN_DEFECTO;
+}
 
 function normalizarProducto(p) {
-  const rutaImagen = p.imagen || p.imagenUrl || '/imagenes/pika.png';
+  const rutaImagen = p.imagenUrl || p.imagen || IMAGEN_DEFECTO;
   return {
     ...p,
     imagen: rutaImagen,
     imagenUrl: rutaImagen,
+    stock: p.stock ?? 0,
+    descuento: p.descuento ?? 0,
   };
 }
 
@@ -33,9 +43,10 @@ class ProductoService {
       estilo: producto.estilo || '',
       descripcion: producto.descripcion || '',
       precio: Number(producto.precio),
-      imagenUrl: producto.imagenUrl || producto.imagen || '/imagenes/pika.png',
+      imagenUrl: normalizarUrl(producto.imagenUrl || producto.imagen),
       categoria: producto.categoria,
       descuento: Number(producto.descuento || 0),
+      stock: Number(producto.stock ?? 10),
     };
     const response = await axios.post(BASE_URL, body);
     return normalizarProducto(response.data);
@@ -47,9 +58,10 @@ class ProductoService {
       estilo: producto.estilo || '',
       descripcion: producto.descripcion || '',
       precio: Number(producto.precio),
-      imagenUrl: producto.imagenUrl || producto.imagen || '/imagenes/pika.png',
+      imagenUrl: normalizarUrl(producto.imagenUrl || producto.imagen),
       categoria: producto.categoria,
       descuento: Number(producto.descuento || 0),
+      stock: Number(producto.stock ?? 10),
     };
     const response = await axios.put(`${BASE_URL}/${id}`, body);
     return normalizarProducto(response.data);
@@ -57,6 +69,17 @@ class ProductoService {
 
   async deleteProducto(id) {
     await axios.delete(`${BASE_URL}/${id}`);
+  }
+
+  async subirImagen(id, archivo) {
+    const formData = new FormData();
+    formData.append('imagen', archivo);
+    const response = await axios.post(`${BASE_URL}/${id}/imagen`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
   }
 }
 

@@ -1,5 +1,6 @@
 package Cerveceria.Taberna.controller;
 
+import Cerveceria.Taberna.dto.OrdenItemRequest;
 import Cerveceria.Taberna.dto.OrdenItemResponse;
 import Cerveceria.Taberna.dto.OrdenRequest;
 import Cerveceria.Taberna.dto.OrdenResponse;
@@ -26,8 +27,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/ordenes")
@@ -48,9 +49,12 @@ public class OrdenController {
         responses = { @ApiResponse(responseCode = "200", description = "Lista de órdenes") })
     @GetMapping
     public List<OrdenResponse> listar() {
-        return ordenRepository.findAllByOrderByIdDesc().stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+        List<Orden> ordenes = ordenRepository.findAllByOrderByIdDesc();
+        List<OrdenResponse> respuestas = new ArrayList<>();
+        for (int i = 0; i < ordenes.size(); i++) {
+            respuestas.add(toResponse(ordenes.get(i)));
+        }
+        return respuestas;
     }
 
     @Operation(summary = "Orden por ID", description = "Obtiene una orden con sus ítems",
@@ -77,23 +81,12 @@ public class OrdenController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La orden debe tener al menos un ítem");
         }
 
-        Integer[] subtotal = {0};
-        Integer[] descuentoTotal = {0};
+        List<Producto> productosValidados = new ArrayList<>();
+        int subtotal = 0;
+        int descuentoTotal = 0;
 
-        Orden orden = new Orden();
-        orden.setUsuarioId(datos.getUsuarioId());
-        orden.setNroOrden(null); // El trigger de BD lo genera: ORDER-000001, ...
-        orden.setFecha(LocalDateTime.now());
-        orden.setEstado(datos.getEstado() != null ? datos.getEstado() : "pendiente");
-        orden.setMetodoPago(datos.getMetodoPago());
-        orden.setEntrega(datos.getEntrega());
-        orden.setCalle(datos.getCalle());
-        orden.setNumero(datos.getNumero());
-        orden.setComplemento(datos.getComplemento());
-        orden.setComuna(datos.getComuna());
-        orden.setRegion(datos.getRegion());
-
-        List<OrdenItemResponse> itemsResponse = datos.getItems().stream().map(item -> {
+        for (int i = 0; i < datos.getItems().size(); i++) {
+            OrdenItemRequest item = datos.getItems().get(i);
             if (item.getProductoId() == null || item.getCantidad() == null || item.getCantidad() <= 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ítem inválido: producto y cantidad requeridos");
             }
@@ -105,43 +98,65 @@ public class OrdenController {
                         "Stock insuficiente para " + producto.getNombre());
             }
 
-            Integer precioUnitario = producto.getPrecio();
-            Integer subtotalItem = precioUnitario * item.getCantidad();
-            Integer descuentoItem = (producto.getDescuento() != null ? producto.getDescuento() : 0)
-                    * subtotalItem / 100;
+            int precioUnitario = producto.getPrecio();
+            int subtotalItem = precioUnitario * item.getCantidad();
+            int porcentajeDescuento = producto.getDescuento() != null ? producto.getDescuento() : 0;
+            int descuentoItem = porcentajeDescuento * subtotalItem / 100;
 
-            subtotal[0] += subtotalItem;
-            descuentoTotal[0] += descuentoItem;
+            subtotal = subtotal + subtotalItem;
+            descuentoTotal = descuentoTotal + descuentoItem;
+            productosValidados.add(producto);
+        }
 
-            // Descontar stock
+        Orden orden = new Orden();
+        orden.setUsuarioId(datos.getUsuarioId());
+        orden.setNroOrden(null);
+        orden.setFecha(LocalDateTime.now());
+        orden.setEstado(datos.getEstado() != null ? datos.getEstado() : "pendiente");
+        orden.setMetodoPago(datos.getMetodoPago());
+        orden.setEntrega(datos.getEntrega());
+        orden.setCalle(datos.getCalle());
+        orden.setNumero(datos.getNumero());
+        orden.setComplemento(datos.getComplemento());
+        orden.setComuna(datos.getComuna());
+        orden.setRegion(datos.getRegion());
+        orden.setSubtotal(subtotal);
+        orden.setDescuento(descuentoTotal);
+        orden.setTotal(subtotal - descuentoTotal);
+
+        Orden saved = ordenRepository.save(orden);
+
+        List<OrdenItemResponse> itemsResponse = new ArrayList<>();
+        for (int i = 0; i < datos.getItems().size(); i++) {
+            OrdenItemRequest item = datos.getItems().get(i);
+            Producto producto = productosValidados.get(i);
+
             producto.setStock(producto.getStock() - item.getCantidad());
             productoRepository.save(producto);
 
             DetalleOrden detalle = new DetalleOrden();
-            detalle.setOrden(orden);
+            detalle.setOrden(saved);
             detalle.setProducto(producto);
             detalle.setCantidad(item.getCantidad());
-            detalle.setPrecioUnitario(precioUnitario);
+            detalle.setPrecioUnitario(producto.getPrecio());
             detalleOrdenRepository.save(detalle);
 
-            return new OrdenItemResponse(
+            itemsResponse.add(new OrdenItemResponse(
                     producto.getId(),
                     producto.getNombre(),
                     item.getCantidad(),
-                    precioUnitario
-            );
-        }).collect(Collectors.toList());
+                    producto.getPrecio()
+            ));
+        }
 
-        Integer total = subtotal[0] - descuentoTotal[0];
-        orden.setSubtotal(subtotal[0]);
-        orden.setDescuento(descuentoTotal[0]);
-        orden.setTotal(total);
-
-        Orden saved = ordenRepository.save(orden);
+        String nroOrden = saved.getNroOrden();
+        if (nroOrden == null && saved.getId() != null) {
+            nroOrden = "ORDER-" + saved.getId();
+        }
 
         return new OrdenResponse(
                 saved.getId(),
-                saved.getNroOrden(),
+                nroOrden,
                 saved.getSubtotal(),
                 saved.getDescuento(),
                 saved.getTotal(),
@@ -151,17 +166,27 @@ public class OrdenController {
     }
 
     private OrdenResponse toResponse(Orden orden) {
-        List<OrdenItemResponse> items = orden.getDetalles() == null ? List.of()
-                : orden.getDetalles().stream()
-                        .map(d -> new OrdenItemResponse(
-                                d.getProducto().getId(),
-                                d.getProducto().getNombre(),
-                                d.getCantidad(),
-                                d.getPrecioUnitario()))
-                        .collect(Collectors.toList());
+        List<OrdenItemResponse> items = new ArrayList<>();
+        if (orden.getDetalles() != null) {
+            for (int i = 0; i < orden.getDetalles().size(); i++) {
+                DetalleOrden d = orden.getDetalles().get(i);
+                items.add(new OrdenItemResponse(
+                        d.getProducto().getId(),
+                        d.getProducto().getNombre(),
+                        d.getCantidad(),
+                        d.getPrecioUnitario()
+                ));
+            }
+        }
+
+        String nroOrden = orden.getNroOrden();
+        if (nroOrden == null && orden.getId() != null) {
+            nroOrden = "ORDER-" + orden.getId();
+        }
+
         return new OrdenResponse(
                 orden.getId(),
-                orden.getNroOrden(),
+                nroOrden,
                 orden.getSubtotal(),
                 orden.getDescuento(),
                 orden.getTotal(),

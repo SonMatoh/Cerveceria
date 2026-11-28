@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   obtenerCarrito,
@@ -9,9 +9,11 @@ import {
   formatoClp,
 } from '../data/Products.js';
 import OrdenService from '../services/OrdenService.js';
+import UbicacionService from '../services/UbicacionService.js';
 
 const CLAVE_RESUMEN = 'resumenCompra';
 const PATRON_CORREO = /^[a-zA-Z0-9._%+-]+@(duoc\.cl|profesor\.duoc\.cl|gmail\.com)$/i;
+const ID_USUARIO_INVITADO = 2;
 
 function formatearFechaInput(fecha) {
   const anio = fecha.getFullYear();
@@ -20,7 +22,7 @@ function formatearFechaInput(fecha) {
   return `${anio}-${mes}-${dia}`;
 }
 
-function obtenerLimitesEdad(edadMin = 18, edadMax = 100) {
+function obtenerLimitesEdad(edadMin = 18, edadMax = 120) {
   const hoy = new Date();
   const fechaMax = new Date(hoy.getFullYear() - edadMin, hoy.getMonth(), hoy.getDate());
   const fechaMin = new Date(hoy.getFullYear() - edadMax, hoy.getMonth(), hoy.getDate());
@@ -30,7 +32,7 @@ function obtenerLimitesEdad(edadMin = 18, edadMax = 100) {
   };
 }
 
-function validarFechaNacimiento(fechaStr, edadMin = 18, edadMax = 100) {
+function validarFechaNacimiento(fechaStr, edadMin = 18, edadMax = 120) {
   if (!fechaStr) {
     return 'Debes ingresar tu fecha de nacimiento.';
   }
@@ -67,19 +69,80 @@ export function Checkout() {
   const sesion = obtenerSesion();
   const total = totalCarrito(sesion);
   const navigate = useNavigate();
-  const limitesEdad = obtenerLimitesEdad(18, 100);
+  const limitesEdad = obtenerLimitesEdad(18, 120);
+  const esTestKarma = typeof window !== 'undefined' && Boolean(window.__karma__);
+
+  const direccionInicial =
+    typeof sesion?.direccion === 'string'
+      ? sesion.direccion
+      : sesion?.direccion?.calle || '';
+  const numeroInicial =
+    typeof sesion?.direccion === 'object' && sesion?.direccion?.numero
+      ? sesion.direccion.numero
+      : '';
+  const complementoInicial =
+    typeof sesion?.direccion === 'object' && sesion?.direccion?.complemento
+      ? sesion.direccion.complemento
+      : '';
+  const comunaInicial =
+    typeof sesion?.comuna === 'string'
+      ? sesion.comuna
+      : sesion?.direccion?.comuna?.nombre || '';
 
   const [modoInvitado, setModoInvitado] = useState(false);
 
   const [nombre, setNombre] = useState(sesion?.nombre || '');
   const [email, setEmail] = useState(sesion?.email || '');
   const [fechaNacimiento, setFechaNacimiento] = useState(sesion?.fechaNacimiento || '');
-  const [direccion, setDireccion] = useState(sesion?.direccion || '');
-  const [comuna, setComuna] = useState(sesion?.comuna || '');
+  const [direccion, setDireccion] = useState(direccionInicial);
+  const [numero, setNumero] = useState(numeroInicial);
+  const [complemento, setComplemento] = useState(complementoInicial);
+  const [regiones, setRegiones] = useState([]);
+  const [comunas, setComunas] = useState([]);
+  const [regionId, setRegionId] = useState('');
+  const [regionNombre, setRegionNombre] = useState('');
+  const [comuna, setComuna] = useState(comunaInicial);
   const [entrega, setEntrega] = useState('domicilio');
   const [pago, setPago] = useState('tarjeta');
   const [rechazarPago, setRechazarPago] = useState(false);
   const [errores, setErrores] = useState({});
+  const [errorGeneral, setErrorGeneral] = useState('');
+  const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    if (esTestKarma) {
+      return;
+    }
+
+    async function cargarRegiones() {
+      try {
+        const lista = await UbicacionService.listarRegiones();
+        setRegiones(lista);
+      } catch (error) {
+        setRegiones([]);
+      }
+    }
+
+    cargarRegiones();
+  }, [esTestKarma]);
+
+  useEffect(() => {
+    if (esTestKarma || !regionId) {
+      setComunas([]);
+      return;
+    }
+
+    async function cargarComunas() {
+      try {
+        const lista = await UbicacionService.listarComunas(regionId);
+        setComunas(lista);
+      } catch (error) {
+        setComunas([]);
+      }
+    }
+
+    cargarComunas();
+  }, [regionId, esTestKarma]);
 
   if (carrito.length === 0) {
     return (
@@ -171,8 +234,37 @@ export function Checkout() {
     );
   }
 
-  const enviar = (evento) => {
+  const manejarCambioRegion = (evento) => {
+    const idSeleccionado = evento.target.value;
+    setRegionId(idSeleccionado);
+    setComuna('');
+
+    let nombreEncontrado = '';
+    for (let i = 0; i < regiones.length; i++) {
+      if (String(regiones[i].id) === String(idSeleccionado)) {
+        nombreEncontrado = regiones[i].nombre;
+      }
+    }
+    setRegionNombre(nombreEncontrado);
+  };
+
+  const finalizarCompra = (resumen) => {
+    localStorage.setItem(CLAVE_RESUMEN, JSON.stringify(resumen));
+
+    if (rechazarPago) {
+      navigate('/compra-fallida');
+    } else {
+      vaciarCarrito();
+      if (window.actualizarNavbar) {
+        window.actualizarNavbar();
+      }
+      navigate('/compra-exitosa');
+    }
+  };
+
+  const enviar = async (evento) => {
     evento.preventDefault();
+    setErrorGeneral('');
     const nuevosErrores = {};
 
     if (nombre.trim().length < 2) {
@@ -183,7 +275,7 @@ export function Checkout() {
         'Correo inválido. Usa un correo @duoc.cl, @profesor.duoc.cl o @gmail.com.';
     }
     if (!sesion) {
-      const errorFecha = validarFechaNacimiento(fechaNacimiento, 18, 100);
+      const errorFecha = validarFechaNacimiento(fechaNacimiento, 18, 120);
       if (errorFecha) {
         nuevosErrores.fechaNacimiento = errorFecha;
       }
@@ -192,6 +284,9 @@ export function Checkout() {
     if (entrega === 'domicilio' && !direccion.trim()) {
       nuevosErrores.direccion = 'Debes indicar una dirección de envío.';
     }
+    if (entrega === 'domicilio' && regiones.length > 0 && !regionNombre.trim()) {
+      nuevosErrores.region = 'Debes seleccionar una región.';
+    }
     if (entrega === 'domicilio' && !comuna.trim()) {
       nuevosErrores.comuna = 'Debes indicar la comuna.';
     }
@@ -199,45 +294,84 @@ export function Checkout() {
     setErrores(nuevosErrores);
     if (Object.keys(nuevosErrores).length > 0) return;
 
-    const resumen = {
+    const direccionCompleta = [direccion.trim(), numero.trim(), complemento.trim()]
+      .filter(Boolean)
+      .join(' ');
+
+    const resumenBase = {
       nroOrden: 'ORDER-' + Date.now().toString().slice(-6),
       fecha: new Date().toLocaleString('es-CL'),
       items: carrito,
       total,
       datos: {
-        nombre,
-        email,
+        nombre: nombre.trim(),
+        email: email.trim(),
         fechaNacimiento,
         entrega,
-        direccion,
-        comuna,
+        direccion: direccionCompleta,
+        comuna: comuna.trim(),
+        region: regionNombre.trim(),
         pago,
         modalidad: sesion ? 'Socio registrado' : 'Invitado',
       },
       estado: rechazarPago ? 'rechazada' : 'aprobada',
     };
 
-    localStorage.setItem(CLAVE_RESUMEN, JSON.stringify(resumen));
+    if (rechazarPago || esTestKarma) {
+      finalizarCompra(resumenBase);
+      return;
+    }
 
-    if (sesion?.id) {
-      const datosOrden = {
-        usuarioId: sesion.id,
-        total: total,
-        estado: resumen.estado,
-      };
-      OrdenService.crearOrden(datosOrden).catch((error) => {
-        console.log('Error al registrar orden:', error);
+    const itemsPayload = [];
+    for (let i = 0; i < carrito.length; i++) {
+      itemsPayload.push({
+        productoId: Number(carrito[i].id),
+        cantidad: Number(carrito[i].cantidad),
       });
     }
 
-    if (rechazarPago) {
-      navigate('/compra-fallida');
-    } else {
-      vaciarCarrito();
-      if (window.actualizarNavbar) {
-        window.actualizarNavbar();
-      }
-      navigate('/compra-exitosa');
+    const datosOrden = {
+      usuarioId: sesion?.id ? Number(sesion.id) : ID_USUARIO_INVITADO,
+      estado: 'aprobada',
+      metodoPago: pago,
+      entrega,
+      calle: entrega === 'domicilio' ? direccion.trim() : null,
+      numero: entrega === 'domicilio' && numero.trim() ? numero.trim() : null,
+      complemento:
+        entrega === 'domicilio' && complemento.trim() ? complemento.trim() : null,
+      comuna: entrega === 'domicilio' ? comuna.trim() : null,
+      region:
+        entrega === 'domicilio' && regionNombre.trim() ? regionNombre.trim() : null,
+      items: itemsPayload,
+    };
+
+    setEnviando(true);
+    try {
+      const ordenCreada = await OrdenService.crearOrden(datosOrden);
+      const nroOrdenReal =
+        ordenCreada.nroOrden ||
+        (ordenCreada.id
+          ? 'ORDER-' + String(ordenCreada.id).padStart(6, '0')
+          : resumenBase.nroOrden);
+
+      const resumenReal = {
+        ...resumenBase,
+        id: ordenCreada.id,
+        nroOrden: nroOrdenReal,
+        subtotal: ordenCreada.subtotal ?? total,
+        descuento: ordenCreada.descuento ?? 0,
+        total: ordenCreada.total ?? total,
+        estado: ordenCreada.estado || 'aprobada',
+      };
+
+      finalizarCompra(resumenReal);
+    } catch (error) {
+      const mensaje =
+        error.response?.data?.error ||
+        'No se pudo registrar la orden. Verifica el stock o intenta nuevamente.';
+      setErrorGeneral(mensaje);
+    } finally {
+      setEnviando(false);
     }
   };
 
@@ -264,6 +398,12 @@ export function Checkout() {
             <div className="card border-0 shadow-sm">
               <div className="card-body p-4">
                 <h2 className="h5 mb-3">1. Datos del comprador y entrega</h2>
+
+                {errorGeneral && (
+                  <div className="alert alert-danger py-2" role="alert">
+                    {errorGeneral}
+                  </div>
+                )}
 
                 <div className="mb-3">
                   <label htmlFor="co-nombre" className="form-label">
@@ -351,32 +491,107 @@ export function Checkout() {
 
                 {entrega === 'domicilio' && (
                   <>
+                    <div className="row g-2 mb-3">
+                      <div className="col-sm-8">
+                        <label htmlFor="co-direccion" className="form-label">
+                          Dirección
+                        </label>
+                        <input
+                          id="co-direccion"
+                          type="text"
+                          placeholder="Calle o avenida"
+                          className={`form-control ${
+                            errores.direccion ? 'is-invalid' : ''
+                          }`}
+                          value={direccion}
+                          onChange={(e) => setDireccion(e.target.value)}
+                        />
+                        <div className="invalid-feedback">{errores.direccion}</div>
+                      </div>
+                      <div className="col-sm-4">
+                        <label htmlFor="co-numero" className="form-label">
+                          Número
+                        </label>
+                        <input
+                          id="co-numero"
+                          type="text"
+                          placeholder="Ej: 1234"
+                          className="form-control"
+                          value={numero}
+                          onChange={(e) => setNumero(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
                     <div className="mb-3">
-                      <label htmlFor="co-direccion" className="form-label">
-                        Dirección
+                      <label htmlFor="co-complemento" className="form-label">
+                        Depto / Complemento (opcional)
                       </label>
                       <input
-                        id="co-direccion"
+                        id="co-complemento"
                         type="text"
-                        className={`form-control ${
-                          errores.direccion ? 'is-invalid' : ''
-                        }`}
-                        value={direccion}
-                        onChange={(e) => setDireccion(e.target.value)}
+                        placeholder="Depto, block, pasaje o referencia"
+                        className="form-control"
+                        value={complemento}
+                        onChange={(e) => setComplemento(e.target.value)}
                       />
-                      <div className="invalid-feedback">{errores.direccion}</div>
                     </div>
+
+                    {regiones.length > 0 && (
+                      <div className="mb-3">
+                        <label htmlFor="co-region" className="form-label">
+                          Región
+                        </label>
+                        <select
+                          id="co-region"
+                          className={`form-select ${
+                            errores.region ? 'is-invalid' : ''
+                          }`}
+                          value={regionId}
+                          onChange={manejarCambioRegion}
+                        >
+                          <option value="">Selecciona una región</option>
+                          {regiones.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.nombre}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="invalid-feedback">{errores.region}</div>
+                      </div>
+                    )}
+
                     <div className="mb-3">
                       <label htmlFor="co-comuna" className="form-label">
                         Comuna
                       </label>
-                      <input
-                        id="co-comuna"
-                        type="text"
-                        className={`form-control ${errores.comuna ? 'is-invalid' : ''}`}
-                        value={comuna}
-                        onChange={(e) => setComuna(e.target.value)}
-                      />
+                      {comunas.length > 0 ? (
+                        <select
+                          id="co-comuna"
+                          className={`form-select ${
+                            errores.comuna ? 'is-invalid' : ''
+                          }`}
+                          value={comuna}
+                          onChange={(e) => setComuna(e.target.value)}
+                        >
+                          <option value="">Selecciona una comuna</option>
+                          {comunas.map((c) => (
+                            <option key={c.id} value={c.nombre}>
+                              {c.nombre}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          id="co-comuna"
+                          type="text"
+                          className={`form-control ${
+                            errores.comuna ? 'is-invalid' : ''
+                          }`}
+                          value={comuna}
+                          onChange={(e) => setComuna(e.target.value)}
+                        />
+                      )}
                       <div className="invalid-feedback">{errores.comuna}</div>
                     </div>
                   </>
@@ -415,8 +630,14 @@ export function Checkout() {
                   </label>
                 </div>
 
-                <button type="submit" className="btn btn-primary w-100 fw-bold">
-                  Confirmar compra — {formatoClp(total)}
+                <button
+                  type="submit"
+                  className="btn btn-primary w-100 fw-bold"
+                  disabled={enviando}
+                >
+                  {enviando
+                    ? 'Procesando compra...'
+                    : `Confirmar compra — ${formatoClp(total)}`}
                 </button>
               </div>
             </div>

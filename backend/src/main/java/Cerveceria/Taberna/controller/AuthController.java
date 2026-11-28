@@ -39,10 +39,6 @@ public class AuthController {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
-    // Si tenemos una sesión en memoria mientras dure la instancia,
-    // entonces guardamos acá el correo del usuario que hizo login.
-    // Es temporal: cuando el front pide /es-admin volvemos a buscar al usuario
-    // en la BD para leer su rol de verdad.
     private static String sesionEmail = null;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -55,36 +51,29 @@ public class AuthController {
         String email = credenciales.getEmail().trim().toLowerCase();
         String password = credenciales.getPassword();
 
-        // Si el correo no es de un dominio permitido, entonces ni buscamos
-        // en la BD: devolvemos 400 para que el front muestre el error en el formulario.
         if (!ValidacionesUtil.esEmailPermitido(email)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "El correo debe ser @duoc.cl, @profesor.duoc.cl o @gmail.com"));
         }
 
-        // Si no encontramos el correo, entonces mandamos 401 "credenciales inválidas"
-        // (no decimos que el usuario no existe, por seguridad).
         Usuario usuario = usuarioRepository.findByEmail(email);
         if (usuario == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Credenciales inválidas"));
         }
 
-        // Si la contraseña que viene no coincide con el hash guardado,
-        // entonces tampoco dejamos entrar: usamos BCrypt.matches, nunca texto plano.
         if (!passwordEncoder.matches(password, usuario.getPassword())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Credenciales inválidas"));
         }
 
-        // Si pasamos las dos validaciones, entonces marcamos la sesión con este correo.
         sesionEmail = email;
 
         Map<String, Object> respuesta = new HashMap<>();
         respuesta.put("token", "token-simulado-" + email);
         respuesta.put("usuario", usuario);
 
-        EntityModel<Map<String, Object>> model = EntityModel.of(respuesta);
+        var model = EntityModel.of(respuesta);
         model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).login(null)).withSelfRel());
         model.add(
                 WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).sesion()).withRel("sesion"));
@@ -102,22 +91,16 @@ public class AuthController {
         String password = datos.getPassword();
         String fechaNacimientoStr = datos.getFechaNacimiento();
 
-        // Si el correo no es de un dominio permitido, entonces ni seguimos
-        // con el registro: el front debe mostrar los dominios aceptados.
         if (!ValidacionesUtil.esEmailPermitido(email)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "El correo debe ser @duoc.cl, @profesor.duoc.cl o @gmail.com"));
         }
 
-        // Si el correo ya está en la BD, entonces no creamos otro usuario:
-        // el email es único y se lo avisamos al front con un 400.
         if (usuarioRepository.findByEmail(email) != null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "El email ya está registrado"));
         }
 
-        // Si la fecha viene en otro formato, entonces no la podemos parsear:
-        // le pedimos YYYY-MM-DD para que el front sepa cómo enviarla.
         LocalDate fechaNacimiento;
         try {
             fechaNacimiento = LocalDate.parse(fechaNacimientoStr);
@@ -126,8 +109,6 @@ public class AuthController {
                     .body(Map.of("error", "Formato de fecha inválido. Use YYYY-MM-DD"));
         }
 
-        // Si la edad no está entre 18 y 120, entonces validarEdad lanza:
-        // la capturamos y le mandamos el mensaje al front con un 400.
         try {
             ValidacionesUtil.validarEdad(fechaNacimiento);
         } catch (IllegalArgumentException e) {
@@ -135,9 +116,6 @@ public class AuthController {
                     .body(Map.of("error", e.getMessage()));
         }
 
-        // Si llegamos hasta acá, entonces armamos el usuario:
-        // guardamos la contraseña hasheada con BCrypt y el rol siempre "cliente"
-        // (los admin los creamos directo en Neon, no por este endpoint).
         Usuario nuevo = new Usuario();
         nuevo.setNombre(nombre);
         nuevo.setEmail(email);
@@ -151,7 +129,7 @@ public class AuthController {
         respuesta.put("ok", true);
         respuesta.put("mensaje", "Usuario registrado exitosamente");
 
-        EntityModel<Map<String, Object>> model = EntityModel.of(respuesta);
+        var model = EntityModel.of(respuesta);
         model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).registro(null))
                 .withSelfRel());
         model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(AuthController.class).login(null))
@@ -207,16 +185,17 @@ public class AuthController {
                     .body(Map.of("esAdmin", false));
         }
 
-        // Si hay sesión, entonces comparamos el rol del usuario:
-        // con esto el front decide si muestra o no el botón de Administración.
         boolean esAdmin = "admin".equals(usuario.getRol());
         return ResponseEntity.ok(Map.of("esAdmin", esAdmin));
     }
 
-    /**
-     * Si @Valid encuentra campos malos, entonces armamos un mapa
-     * campo -> mensaje para que el front sepa exactamente qué corregir.
-     */
+    @Operation(summary = "Listar usuarios", description = "Devuelve todos los usuarios registrados",
+        responses = { @ApiResponse(responseCode = "200", description = "Lista de usuarios") })
+    @GetMapping("/usuarios")
+    public ResponseEntity<?> listarUsuarios() {
+        return ResponseEntity.ok(usuarioRepository.findAll());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> manejarErroresValidacion(MethodArgumentNotValidException ex) {
         Map<String, String> errores = new HashMap<>();

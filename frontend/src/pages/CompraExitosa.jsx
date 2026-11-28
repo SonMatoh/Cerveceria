@@ -5,12 +5,24 @@ import { formatoClp } from '../data/Products.js';
 const CLAVE_RESUMEN = 'resumenCompra';
 
 function leerResumen() {
-  const guardado = localStorage.getItem(CLAVE_RESUMEN);
-  return guardado ? JSON.parse(guardado) : null;
+  try {
+    const guardado = localStorage.getItem(CLAVE_RESUMEN);
+    return guardado ? JSON.parse(guardado) : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 export function CompraExitosa() {
   const resumen = leerResumen();
+
+  const direccionTexto = [
+    resumen?.datos?.direccion,
+    resumen?.datos?.comuna,
+    resumen?.datos?.region,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <div className="container py-5">
@@ -45,37 +57,55 @@ export function CompraExitosa() {
               </div>
 
               <ul className="list-unstyled">
-                {resumen.items?.map((item) => (
-                  <li
-                    key={item.id}
-                    className="d-flex justify-content-between small mb-2"
-                  >
-                    <span>
-                      {item.nombre} × {item.cantidad}
-                    </span>
-                    <span className="fw-semibold">
-                      {formatoClp(item.precioFinal * item.cantidad)}
-                    </span>
-                  </li>
-                ))}
+                {resumen.items?.map((item, idx) => {
+                  const precioUnit =
+                    item.precioFinal ?? item.precioUnitario ?? item.precio ?? 0;
+                  return (
+                    <li
+                      key={item.id || item.productoId || idx}
+                      className="d-flex justify-content-between small mb-2"
+                    >
+                      <span>
+                        {item.nombre || item.productoNombre} × {item.cantidad}
+                      </span>
+                      <span className="fw-semibold">
+                        {formatoClp(precioUnit * item.cantidad)}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
+
+              {resumen.descuento > 0 && (
+                <div className="border-top pt-2 mb-2 small text-secondary">
+                  <div className="d-flex justify-content-between">
+                    <span>Subtotal</span>
+                    <span>{formatoClp(resumen.subtotal || 0)}</span>
+                  </div>
+                  <div className="d-flex justify-content-between text-success">
+                    <span>Descuento</span>
+                    <span>-{formatoClp(resumen.descuento)}</span>
+                  </div>
+                </div>
+              )}
 
               <div className="d-flex justify-content-between border-top pt-3">
                 <span className="fw-bold">Total pagado</span>
                 <span className="fw-bold text-primary fs-5">
-                  {formatoClp(resumen.total)}
+                  {formatoClp(resumen.total || 0)}
                 </span>
               </div>
 
               <hr />
               <p className="small text-secondary mb-1">
-                <strong>Cliente:</strong> {resumen.datos?.nombre} — {resumen.datos?.email}{' '}
+                <strong>Cliente:</strong> {resumen.datos?.nombre} —{' '}
+                {resumen.datos?.email}{' '}
                 {resumen.datos?.modalidad ? `(${resumen.datos.modalidad})` : ''}
               </p>
               <p className="small text-secondary mb-1">
                 <strong>Entrega:</strong>{' '}
                 {resumen.datos?.entrega === 'domicilio'
-                  ? `Envío a ${resumen.datos?.direccion}, ${resumen.datos?.comuna}`
+                  ? `Envío a ${direccionTexto}`
                   : 'Retiro en tienda'}
               </p>
               <p className="small text-secondary mb-0">

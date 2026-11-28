@@ -8,6 +8,7 @@ import Input from '../components/atoms/Input.jsx';
 import AuthService from '../services/AuthService.js';
 
 const PATRON_CORREO = /^[a-zA-Z0-9._%+-]+@(duoc\.cl|profesor\.duoc\.cl|gmail\.com)$/i;
+const PATRON_PASSWORD = /^(?=.*[A-Z])(?=.*[0-9]|.*[^A-Za-z0-9\s]).{6,100}$/;
 
 function formatearFechaInput(fecha) {
   const anio = fecha.getFullYear();
@@ -16,7 +17,7 @@ function formatearFechaInput(fecha) {
   return `${anio}-${mes}-${dia}`;
 }
 
-function obtenerLimitesEdad(edadMin = 18, edadMax = 100) {
+function obtenerLimitesEdad(edadMin = 18, edadMax = 120) {
   const hoy = new Date();
   const fechaMax = new Date(hoy.getFullYear() - edadMin, hoy.getMonth(), hoy.getDate());
   const fechaMin = new Date(hoy.getFullYear() - edadMax, hoy.getMonth(), hoy.getDate());
@@ -26,7 +27,7 @@ function obtenerLimitesEdad(edadMin = 18, edadMax = 100) {
   };
 }
 
-function validarFechaRegistro(fechaStr, edadMin = 18, edadMax = 100) {
+function validarFechaRegistro(fechaStr, edadMin = 18, edadMax = 120) {
   if (!fechaStr) {
     return 'Debes ingresar tu fecha de nacimiento.';
   }
@@ -60,7 +61,7 @@ function validarFechaRegistro(fechaStr, edadMin = 18, edadMax = 100) {
 
 export function Registro() {
   const navigate = useNavigate();
-  const limitesEdad = obtenerLimitesEdad(18, 100);
+  const limitesEdad = obtenerLimitesEdad(18, 120);
   const [errorGeneral, setErrorGeneral] = useState('');
   const [errorPass2, setErrorPass2] = useState('');
   const [errorEdad, setErrorEdad] = useState('');
@@ -85,7 +86,7 @@ export function Registro() {
     setErrorPass2('');
     setErrorEdad('');
 
-    const mensajeEdad = validarFechaRegistro(data.fechaNacimiento, 18, 100);
+    const mensajeEdad = validarFechaRegistro(data.fechaNacimiento, 18, 120);
     if (mensajeEdad) {
       setErrorEdad(mensajeEdad);
       return;
@@ -99,8 +100,8 @@ export function Registro() {
     setCargando(true);
     try {
       const response = await AuthService.registro({
-        nombre: data.nombre,
-        email: data.email,
+        nombre: data.nombre.trim(),
+        email: data.email.trim(),
         password: data.password,
         fechaNacimiento: data.fechaNacimiento,
       });
@@ -122,12 +123,7 @@ export function Registro() {
         }
       }
 
-      const mensajeBackend = dataError?.error;
-      if (mensajeBackend && mensajeBackend.includes('invñlidos')) {
-        setErrorGeneral('Datos inválidos. Revisa los campos e intenta nuevamente.');
-      } else {
-        setErrorGeneral(mensajeBackend || 'Error al registrar usuario. Intenta nuevamente.');
-      }
+      setErrorGeneral(dataError?.error || 'Error al registrar usuario. Intenta nuevamente.');
     } finally {
       setCargando(false);
     }
@@ -159,6 +155,10 @@ export function Registro() {
                         value: 2,
                         message: 'El nombre debe tener al menos 2 caracteres.',
                       },
+                      maxLength: {
+                        value: 100,
+                        message: 'El nombre no puede exceder 100 caracteres.',
+                      },
                     })}
                   />
                 </FormField>
@@ -184,7 +184,7 @@ export function Registro() {
                   htmlFor="reg-fecha"
                   label="Fecha de nacimiento"
                   error={errors.fechaNacimiento?.message || errorEdad}
-                  hint="Venta exclusiva para mayores de 18 años (rango válido: 18 a 100 años)."
+                  hint="Venta exclusiva para mayores de 18 años."
                 >
                   <Input
                     id="reg-fecha"
@@ -204,20 +204,26 @@ export function Registro() {
                       htmlFor="reg-pass"
                       label="Contraseña"
                       error={errors.password?.message}
+                      hint="Mínimo 6 caracteres, 1 mayúscula y 1 número o símbolo."
                     >
                       <Input
                         id="reg-pass"
                         type="password"
                         className={errors.password ? 'is-invalid' : ''}
                         {...register('password', {
-                          required: 'La contraseña debe tener entre 4 y 10 caracteres.',
+                          required: 'La contraseña es obligatoria.',
                           minLength: {
-                            value: 4,
-                            message: 'La contraseña debe tener entre 4 y 10 caracteres.',
+                            value: 6,
+                            message: 'La contraseña debe tener al menos 6 caracteres.',
                           },
                           maxLength: {
-                            value: 10,
-                            message: 'La contraseña debe tener entre 4 y 10 caracteres.',
+                            value: 100,
+                            message: 'La contraseña no puede exceder 100 caracteres.',
+                          },
+                          pattern: {
+                            value: PATRON_PASSWORD,
+                            message:
+                              'Debe incluir al menos 1 mayúscula y 1 número o carácter especial.',
                           },
                         })}
                       />

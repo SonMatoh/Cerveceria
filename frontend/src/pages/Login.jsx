@@ -25,7 +25,10 @@ export function Login() {
     setCargando(true);
 
     try {
-      const response = await AuthService.login(data);
+      const response = await AuthService.login({
+        email: data.email.trim(),
+        password: data.password,
+      });
 
       let usuario = null;
       if (response && response.usuario) {
@@ -41,11 +44,18 @@ export function Login() {
         return;
       }
 
+      const token = response?.token || response?.data?.token;
+      if (token) {
+        localStorage.setItem('token', token);
+      }
+
       iniciarSesion({
         id: usuario.id,
         nombre: usuario.nombre,
         email: usuario.email,
         rol: usuario.rol,
+        fechaNacimiento: usuario.fechaNacimiento || '',
+        direccion: usuario.direccion || '',
       });
 
       if (window.actualizarNavbar) {
@@ -55,7 +65,9 @@ export function Login() {
     } catch (error) {
       const status = error.response?.status;
       if (status === 401 || status === 400) {
-        setErrorLogin('Email o contraseña incorrectos.');
+        setErrorLogin(
+          error.response?.data?.error || 'Email o contraseña incorrectos.'
+        );
       } else {
         setErrorLogin(
           'El servidor está despertando o tardó demasiado. Intenta nuevamente en unos segundos.'
@@ -108,14 +120,10 @@ export function Login() {
                     type="password"
                     className={errors.password ? 'is-invalid' : ''}
                     {...register('password', {
-                      required: 'La contraseña debe tener entre 4 y 10 caracteres.',
-                      minLength: {
-                        value: 4,
-                        message: 'La contraseña debe tener entre 4 y 10 caracteres.',
-                      },
+                      required: 'La contraseña es obligatoria.',
                       maxLength: {
-                        value: 10,
-                        message: 'La contraseña debe tener entre 4 y 10 caracteres.',
+                        value: 100,
+                        message: 'La contraseña no puede exceder 100 caracteres.',
                       },
                     })}
                   />
